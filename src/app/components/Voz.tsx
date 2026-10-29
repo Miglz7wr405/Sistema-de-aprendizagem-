@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 /**
  * Ditado por voz.
  * 1) Usa o reconhecimento do próprio navegador (Chrome/Android/Edge/Safari) — grátis e com texto ao vivo.
- * 2) Se o navegador não tiver, grava o áudio e manda para a Edge Function `transcrever` (ElevenLabs).
+ * 2) Se o navegador não tiver (ou falhar, como no Brave/Opera), grava o áudio e manda para a Edge Function `transcrever` (ElevenLabs).
  */
 
 type SpeechRecognitionLike = {
@@ -46,6 +46,41 @@ export function formatoDeGravacao(): { mime: string; ext: string } | null {
   return opcoes.find((o) => MediaRecorder.isTypeSupported(o.mime)) ?? { mime: "", ext: "webm" };
 }
 
+/** Áudio → texto na Edge Function `transcrever` (ElevenLabs). */
+function transcreverNoServidor(fd: FormData) {
+  return chamarFuncao<{ texto?: string }>("transcrever", fd);
+}
+
+const CHAVE_SEM_DITADO = "voz-sem-ditado-navegador";
+
+// Erros que querem dizer "este navegador não tem serviço de reconhecimento" (ex.: Brave, Opera).
+const ERROS_SEM_SERVICO = new Set([
+  "network",
+  "service-not-allowed",
+  "language-not-supported",
+  "bad-grammar",
+]);
+
+/** Brave/Opera têm a API mas não o serviço da Google; e se já falhou aqui, não volta a tentar. */
+function navegadorSemDitado() {
+  const nav = navigator as Navigator & { brave?: unknown };
+  if (nav.brave) return true;
+  if (/\bOPR\/|\bOpera\b|\bOPX\//.test(navigator.userAgent)) return true;
+  try {
+    return localStorage.getItem(CHAVE_SEM_DITADO) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function marcarSemDitado() {
+  try {
+    localStorage.setItem(CHAVE_SEM_DITADO, "1");
+  } catch {
+    /* modo privado */
+  }
+}
+
 export function vozDisponivel() {
   if (typeof window === "undefined") return false;
   return Boolean(
@@ -54,9 +89,15 @@ export function vozDisponivel() {
 }
 
 export type EstadoDitado = "parado" | "a_ouvir" | "a_transcrever";
+/** "navegador": texto ao vivo; "gravacao": grava e transcreve no servidor ao parar. */
+export type ModoDitado = "navegador" | "gravacao";
+
+const AJUDA_MICROFONE =
+  "Sem acesso ao microfone. Toca no cadeado ao lado do endereço → Microfone → Permitir, e tenta outra vez.";
 
 export function useDitado(onTexto: (texto: string) => void) {
   const [estado, setEstado] = useState<EstadoDitado>("parado");
+  const [modo, setModo] = useState<ModoDitado>("navegador");
   const [parcial, setParcial] = useState("");
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const gravadorRef = useRef<MediaRecorder | null>(null);
@@ -76,41 +117,11 @@ export function useDitado(onTexto: (texto: string) => void) {
     [],
   );
 
-  const iniciarNavegador = useCallback((SR: new () => SpeechRecognitionLike) => {
-    const rec = new SR();
-    rec.lang = "pt-PT";
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) onTextoRef.current(r[0].transcript);
-        else interim += r[0].transcript;
-      }
-      setParcial(interim);
-    };
-    rec.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        toast.error("Sem acesso ao microfone. Autoriza nas definições do navegador.");
-      } else if (e.error !== "no-speech" && e.error !== "aborted") {
-        toast.error("O ditado parou. Tenta outra vez.");
-      }
-    };
-    rec.onend = () => {
-      setEstado("parado");
-      setParcial("");
-      recRef.current = null;
-    };
-    recRef.current = rec;
-    rec.start();
-    setEstado("a_ouvir");
-  }, []);
-
   const iniciarGravacao = useCallback(async () => {
     const formato = formatoDeGravacao();
     if (!formato || !navigator.mediaDevices?.getUserMedia) {
-      toast.error("Este navegador não permite ditado por voz.");
+      toast.error("Este navegador não permite ditado por voz. Experimenta o Google Chrome.");
+      setEstado("parado");
       return;
     }
     try {
@@ -133,7 +144,7 @@ export function useDitado(onTexto: (texto: string) => void) {
         try {
           const fd = new FormData();
           fd.append("audio", new File([blob], `ditado.${formato.ext}`, { type: tipo }));
-          const r = await chamarFuncao<{ texto?: string }>("transcrever", fd);
+          const r = await transcreverNoServidor(fd);
           if (r.texto?.trim()) onTextoRef.current(r.texto.trim());
           else toast.message("Não percebi nada. Tenta falar mais perto do microfone.");
         } catch (e) {
@@ -144,15 +155,64 @@ export function useDitado(onTexto: (texto: string) => void) {
       };
       gravadorRef.current = rec;
       rec.start();
+      setModo("gravacao");
       setEstado("a_ouvir");
     } catch {
-      toast.error("Sem acesso ao microfone. Autoriza nas definições do navegador.");
+      toast.error(AJUDA_MICROFONE);
+      setEstado("parado");
     }
   }, []);
 
+  const iniciarNavegador = useCallback(
+    (SR: new () => SpeechRecognitionLike) => {
+      const rec = new SR();
+      let semServico = false;
+      rec.lang = "pt-PT";
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onresult = (e) => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) onTextoRef.current(r[0].transcript);
+          else interim += r[0].transcript;
+        }
+        setParcial(interim);
+      };
+      rec.onerror = (e) => {
+        if (ERROS_SEM_SERVICO.has(e.error)) {
+          // O navegador não sabe transcrever: daqui em diante grava e transcreve no servidor.
+          semServico = true;
+          marcarSemDitado();
+        } else if (e.error === "not-allowed" || e.error === "audio-capture") {
+          toast.error(AJUDA_MICROFONE);
+        } else if (e.error !== "no-speech" && e.error !== "aborted") {
+          toast.error("O ditado parou. Tenta outra vez.");
+        }
+      };
+      rec.onend = () => {
+        setParcial("");
+        recRef.current = null;
+        if (semServico) {
+          toast.message("Este navegador não tem ditado embutido.", {
+            description: "Estou a gravar — fala e toca outra vez no microfone para parar.",
+          });
+          void iniciarGravacao();
+        } else {
+          setEstado("parado");
+        }
+      };
+      recRef.current = rec;
+      rec.start();
+      setModo("navegador");
+      setEstado("a_ouvir");
+    },
+    [iniciarGravacao],
+  );
+
   const iniciar = useCallback(() => {
     const SR = reconhecimentoDoNavegador();
-    if (SR) {
+    if (SR && !navegadorSemDitado()) {
       try {
         iniciarNavegador(SR);
         return;
@@ -168,7 +228,7 @@ export function useDitado(onTexto: (texto: string) => void) {
     else if (estado === "parado") iniciar();
   }, [estado, iniciar, pararTudo]);
 
-  return { estado, parcial, iniciar, parar: pararTudo, alternar };
+  return { estado, modo, parcial, iniciar, parar: pararTudo, alternar };
 }
 
 /** Escreve texto num input/textarea controlado pelo React (dispara o onChange). */
@@ -199,7 +259,7 @@ export function MicButton({
   titulo?: string;
 }) {
   const [disponivel] = useState(vozDisponivel);
-  const { estado, parcial, alternar } = useDitado((texto) => {
+  const { estado, modo, parcial, alternar } = useDitado((texto) => {
     if (onTexto) onTexto(texto);
     else if (alvo?.current) inserirTexto(alvo.current, texto);
   });
@@ -207,11 +267,20 @@ export function MicButton({
   if (!disponivel) return null;
 
   const ouvir = estado === "a_ouvir";
+  // No modo gravação não há texto ao vivo: diz o que está a acontecer.
+  const aviso =
+    estado === "a_transcrever"
+      ? "A transcrever..."
+      : ouvir && modo === "gravacao"
+        ? "A gravar — toca para parar"
+        : ouvir
+          ? parcial
+          : "";
   return (
     <span className={cn("relative inline-flex", className)}>
-      {ouvir && parcial && (
+      {aviso && (
         <span className="pointer-events-none absolute bottom-full right-0 z-20 mb-2 max-w-[240px] truncate rounded-lg bg-text-hi px-2.5 py-1.5 text-xs text-white shadow-lg">
-          {parcial}
+          {aviso}
         </span>
       )}
       <button

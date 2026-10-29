@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   const chave = Deno.env.get("ELEVENLABS_API_KEY");
   if (!chave) {
     return json(
-      { erro: "O ditado por voz ainda não está disponível neste telemóvel (falta configurar o ElevenLabs)." },
+      { erro: "O ditado por gravação ainda não está ativo (falta a chave do ElevenLabs). Entretanto, usa o Google Chrome para ditar." },
       503,
     );
   }
