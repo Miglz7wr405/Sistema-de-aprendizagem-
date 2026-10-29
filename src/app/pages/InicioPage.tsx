@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, GraduationCap, PlayCircle, Trophy } from "lucide-react";
 
 import { primeiroNome } from "@/lib/utils";
-import { youtubeThumb } from "@/lib/video";
+import { miniaturaDoLink } from "@/lib/video";
 import { useAuth } from "../auth";
 import { aulasDoCurso, CabecalhoSeccao, CursoCard, progressoDoCurso } from "../components/Catalogo";
 import { Button, Carregando, EmptyState, Erro, ProgressBar } from "../components/primitives";
@@ -89,11 +89,12 @@ export default function InicioPage() {
             className="app-card app-card-hover flex items-center gap-4 p-3"
           >
             <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg bg-text-hi">
-              {youtubeThumb(continuar.aula.url) ? (
+              {miniaturaDoLink(continuar.aula.url) ? (
                 <img
-                  src={youtubeThumb(continuar.aula.url)!}
+                  src={miniaturaDoLink(continuar.aula.url)!}
                   alt=""
                   className="h-full w-full object-cover"
+                  onError={(e) => (e.currentTarget.style.visibility = "hidden")}
                 />
               ) : (
                 <div className="grid h-full w-full place-items-center text-white/70">

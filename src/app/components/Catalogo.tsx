@@ -3,7 +3,7 @@ import { CheckCircle2, EyeOff, PlayCircle } from "lucide-react";
 
 import type { Aula, Curso, Progresso, Seccao } from "@/lib/types";
 import { NIVEL_LABEL, NIVEL_STYLE } from "@/lib/types";
-import { youtubeThumb } from "@/lib/video";
+import { miniaturaDoLink } from "@/lib/video";
 import { cn } from "@/lib/utils";
 import { Badge, BadgePrivado, ProgressBar } from "./primitives";
 
@@ -32,7 +32,7 @@ export function progressoDoCurso(cat: Catalogo, cursoId: string) {
 export function capaDoCurso(cat: Catalogo, curso: Curso) {
   if (curso.capa_url) return curso.capa_url;
   for (const a of aulasDoCurso(cat, curso.id)) {
-    const t = youtubeThumb(a.url);
+    const t = miniaturaDoLink(a.url);
     if (t) return t;
   }
   return null;
@@ -54,6 +54,7 @@ export function CursoCard({ cat, curso }: { cat: Catalogo; curso: Curso }) {
             alt=""
             loading="lazy"
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            onError={(e) => (e.currentTarget.style.visibility = "hidden")}
           />
         ) : (
           <div className="grid h-full w-full place-items-center text-white/80">

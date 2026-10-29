@@ -22,6 +22,23 @@ export function youtubeThumb(url: string | null | undefined): string | null {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
 }
 
+/** Id de um ficheiro do Google Drive (file/d/ID, open?id=ID, uc?id=ID). */
+export function driveId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(
+    /(?:drive|docs)\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[\w=&]*&)?id=)([\w-]{20,})/,
+  );
+  return m ? m[1] : null;
+}
+
+/** Miniatura da aula: YouTube ou Google Drive (o Drive só a dá se o vídeo for público). */
+export function miniaturaDoLink(url: string | null | undefined): string | null {
+  const yt = youtubeThumb(url);
+  if (yt) return yt;
+  const drive = driveId(url);
+  return drive ? `https://drive.google.com/thumbnail?id=${drive}&sz=w480` : null;
+}
+
 export type Leitor =
   | { tipo: "iframe"; src: string }
   | { tipo: "video"; src: string }
@@ -38,8 +55,8 @@ export function leitorDoLink(url: string): Leitor {
   const loom = url.match(/loom\.com\/(?:share|embed)\/([\w-]+)/);
   if (loom) return { tipo: "iframe", src: `https://www.loom.com/embed/${loom[1]}` };
 
-  const drive = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([\w-]+)/);
-  if (drive) return { tipo: "iframe", src: `https://drive.google.com/file/d/${drive[1]}/preview` };
+  const drive = driveId(url);
+  if (drive) return { tipo: "iframe", src: `https://drive.google.com/file/d/${drive}/preview` };
 
   if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)) return { tipo: "video", src: url };
 

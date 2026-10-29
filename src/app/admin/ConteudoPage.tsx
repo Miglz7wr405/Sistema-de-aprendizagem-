@@ -22,8 +22,9 @@ import { toast } from "sonner";
 import { Aulas, Cursos, Ficheiros, LIMITE_UPLOAD, Seccoes } from "@/lib/db";
 import type { Aula, Curso, Nivel, Seccao, Visibilidade } from "@/lib/types";
 import { NIVEL_LABEL } from "@/lib/types";
-import { linkValido, tipoDoLink, youtubeThumb } from "@/lib/video";
+import { driveId, linkValido, miniaturaDoLink, tipoDoLink } from "@/lib/video";
 import { cn, tamanhoLegivel } from "@/lib/utils";
+import { AvisoDrivePrivado, useEstadoDrive } from "../components/Drive";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -129,6 +130,44 @@ function BotaoIcone({
     >
       {children}
     </button>
+  );
+}
+
+/** Selo na lista de aulas quando o vídeo do Drive parece privado. */
+function SeloDrivePrivado({ url }: { url: string | null }) {
+  const estado = useEstadoDrive(url);
+  if (estado !== "talvez_privado") return null;
+  return (
+    <Badge className="mt-1 w-fit bg-amber-50 text-amber-700">
+      <Lock className="size-3" /> Privado no Drive
+    </Badge>
+  );
+}
+
+/** Miniatura do link colado e, se for do Drive, se os alunos o vão conseguir ver. */
+function PreVisualizacaoLink({ url }: { url: string }) {
+  const estado = useEstadoDrive(url);
+  const miniatura = miniaturaDoLink(url);
+  return (
+    <>
+      {miniatura && estado !== "talvez_privado" && (
+        <img
+          src={miniatura}
+          alt=""
+          className="mt-2 h-24 rounded-lg object-cover"
+          onError={(e) => (e.currentTarget.style.display = "none")}
+        />
+      )}
+      {estado === "a_verificar" && (
+        <p className="mt-2 text-xs text-text-low">A verificar a partilha no Google Drive...</p>
+      )}
+      {estado === "publico" && (
+        <p className="mt-2 text-xs font-medium text-green-700">
+          ✓ Vídeo público no Drive — os alunos conseguem ver.
+        </p>
+      )}
+      {estado === "talvez_privado" && <AvisoDrivePrivado admin className="mt-2" />}
+    </>
   );
 }
 
@@ -622,7 +661,7 @@ export default function ConteudoPage() {
             </div>
           ) : (
             aulas.map((a, i) => {
-              const thumb = youtubeThumb(a.url);
+              const thumb = miniaturaDoLink(a.url);
               return (
                 <div
                   key={a.id}
@@ -649,7 +688,12 @@ export default function ConteudoPage() {
                   />
                   <div className="relative h-11 w-16 shrink-0 overflow-hidden rounded-md bg-text-hi">
                     {thumb ? (
-                      <img src={thumb} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={thumb}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+                      />
                     ) : (
                       <span className="grid h-full w-full place-items-center text-white/70">
                         {a.tipo === "upload" ? (
@@ -665,9 +709,16 @@ export default function ConteudoPage() {
                     <span className="line-clamp-2 text-sm font-medium leading-snug text-text-hi">
                       {a.titulo}
                     </span>
+                    <SeloDrivePrivado url={a.tipo === "upload" ? null : a.url} />
                   </span>
                   <Badge className="hidden shrink-0 bg-bg-base text-text-mid sm:inline-flex">
-                    {a.tipo === "upload" ? "Vídeo" : a.tipo === "youtube" ? "YouTube" : "Link"}
+                    {a.tipo === "upload"
+                      ? "Vídeo"
+                      : a.tipo === "youtube"
+                        ? "YouTube"
+                        : driveId(a.url)
+                          ? "Drive"
+                          : "Link"}
                   </Badge>
                   <BotaoIcone label="Editar aula" onClick={() => abrirAula(a)}>
                     <Pencil className="size-4" />
@@ -846,21 +897,19 @@ export default function ConteudoPage() {
             </div>
           </div>
           {fa.fonte === "link" ? (
-            <Field label="Link do vídeo" required>
+            <Field
+              label="Link do vídeo"
+              required
+              hint="YouTube, Vimeo, Loom ou Google Drive. Dica: no Drive, partilha a PASTA do curso como “Qualquer pessoa com o link” — todos os vídeos lá dentro ficam visíveis para os alunos."
+            >
               <Input
                 type="url"
                 inputMode="url"
-                placeholder="https://youtu.be/..."
+                placeholder="https://drive.google.com/file/d/... ou https://youtu.be/..."
                 value={fa.url}
                 onChange={(e) => setFa({ ...fa, url: e.target.value })}
               />
-              {youtubeThumb(fa.url) && (
-                <img
-                  src={youtubeThumb(fa.url)!}
-                  alt=""
-                  className="mt-2 h-24 rounded-lg object-cover"
-                />
-              )}
+              <PreVisualizacaoLink url={fa.url} />
             </Field>
           ) : (
             <Field

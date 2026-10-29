@@ -20,9 +20,10 @@ import { toast } from "sonner";
 import { Aulas, Cursos, Ficheiros, Perguntas, ProgressoDb, Seccoes } from "@/lib/db";
 import type { Aula, Pergunta } from "@/lib/types";
 import { NIVEL_LABEL, NIVEL_STYLE, PAPEL_LABEL } from "@/lib/types";
-import { leitorDoLink, youtubeThumb } from "@/lib/video";
+import { driveId, leitorDoLink, miniaturaDoLink } from "@/lib/video";
 import { cn, tempoRelativo } from "@/lib/utils";
 import { useAuth } from "../auth";
+import { AvisoDrivePrivado, useEstadoDrive } from "../components/Drive";
 import { Textarea } from "../components/Modal";
 import {
   Avatar,
@@ -38,6 +39,7 @@ import { useData } from "../use-data";
 function Leitor({ aula }: { aula: Aula }) {
   const [urlFicheiro, setUrlFicheiro] = useState<string | null>(null);
   const [erro, setErro] = useState(false);
+  const estadoDrive = useEstadoDrive(aula.tipo === "upload" ? null : aula.url);
 
   useEffect(() => {
     setUrlFicheiro(null);
@@ -74,16 +76,29 @@ function Leitor({ aula }: { aula: Aula }) {
 
   const leitor = leitorDoLink(aula.url ?? "");
   if (leitor.tipo === "iframe") {
+    const ehDrive = Boolean(driveId(aula.url));
     return (
-      <div className={caixa} style={{ aspectRatio: "16 / 9" }}>
-        <iframe
-          key={aula.id}
-          src={leitor.src}
-          title={aula.titulo}
-          className="absolute inset-0 h-full w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-        />
+      <div>
+        <div className={caixa} style={{ aspectRatio: "16 / 9" }}>
+          <iframe
+            key={aula.id}
+            src={leitor.src}
+            title={aula.titulo}
+            className="absolute inset-0 h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+          />
+          {ehDrive && (
+            // Tapa o botão "abrir noutra janela" do Drive: o aluno vê a aula dentro da academia.
+            <div
+              aria-hidden="true"
+              data-capa-drive
+              className="absolute right-0 top-0 h-16 w-20"
+              onContextMenu={(e) => e.preventDefault()}
+            />
+          )}
+        </div>
+        {estadoDrive === "talvez_privado" && <AvisoDrivePrivado className="mt-3" />}
       </div>
     );
   }
@@ -450,7 +465,7 @@ export default function CursoPage() {
             <ProgressBar value={pct} className="mt-2 h-1.5" />
             <div className="mt-3 max-h-[60vh] space-y-1.5 overflow-y-auto pr-1">
               {aulas.map((a, i) => {
-                const thumb = youtubeThumb(a.url);
+                const thumb = miniaturaDoLink(a.url);
                 return (
                   <button
                     key={a.id}
@@ -469,6 +484,7 @@ export default function CursoPage() {
                           alt=""
                           loading="lazy"
                           className="h-full w-full object-cover"
+                          onError={(e) => (e.currentTarget.style.visibility = "hidden")}
                         />
                       ) : (
                         <div className="grid h-full w-full place-items-center text-white/60">
