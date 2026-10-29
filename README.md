@@ -20,7 +20,7 @@ cp .env.example .env.local   # URL e chave publicável do Supabase
 npm run dev
 ```
 
-`npm run build` faz typecheck e gera `dist/` (site estático). Deploy no Vercel com o preset **Vite** (`vercel.json`).
+`npm run build` faz typecheck e gera `dist/` (site estático). Deploy no Vercel com o preset **Vite** (`vercel.json`): **https://insight-academia.vercel.app**
 
 ## Supabase (`blpicfheoohtvrjotdut`)
 
@@ -36,7 +36,7 @@ npm run dev
 |---|---|
 | `ELEVENLABS_API_KEY` | ditado por voz em navegadores sem reconhecimento (iPhone na app instalada, Firefox) |
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | emails de "novo pedido" e "acesso aprovado" |
-| `ACADEMIA_URL` | link da academia nos emails |
+| `ACADEMIA_URL` | link da academia nos emails (por defeito https://insight-academia.vercel.app) |
 
 Sem estes secrets tudo funciona — os avisos ficam só no sino de notificações.
 

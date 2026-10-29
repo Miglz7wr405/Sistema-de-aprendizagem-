@@ -81,5 +81,5 @@ export async function enviarEmail(para: string[], assunto: string, texto: string
 
 /** Endereço público da academia (secret ACADEMIA_URL). Nunca vem do pedido, para não haver links falsos nos emails. */
 export function urlDaApp(_req?: Request) {
-  return Deno.env.get("ACADEMIA_URL")?.replace(/\/+$/, "") || undefined;
+  return (Deno.env.get("ACADEMIA_URL") || "https://insight-academia.vercel.app").replace(/\/+$/, "");
 }
