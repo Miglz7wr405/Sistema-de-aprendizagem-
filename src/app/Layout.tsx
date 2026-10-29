@@ -249,7 +249,7 @@ export default function Layout() {
                 }
               >
                 <i.icon className="size-5" />
-                {i.to === "/admin/pedidos" ? "Pedidos" : i.label.replace("O meu ", "")}
+                {i.to === "/admin/pedidos" ? "Pedidos" : i.label.replace("O meu perfil", "Perfil")}
                 {i.to === "/admin/pedidos" && pendentes > 0 && (
                   <span className="absolute right-[28%] top-1.5 rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {pendentes}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode, type Ref } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -30,7 +31,8 @@ export function Modal({
 
   if (!open) return null;
 
-  return (
+  // Portal no body: as animações das páginas (transform) prenderiam o "fixed" dentro da página.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <div
@@ -54,7 +56,8 @@ export function Modal({
         </div>
         <div className="px-5 py-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

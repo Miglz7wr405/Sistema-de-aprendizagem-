@@ -594,7 +594,7 @@ function Conversa({ grupo, onLido }: { grupo: Grupo; onLido: () => void }) {
                       enviar();
                     }
                   }}
-                  placeholder="Escreve ou dita uma mensagem..."
+                  placeholder="Escreve uma mensagem..."
                   className="max-h-40 min-h-[40px] w-full resize-none bg-transparent px-3.5 py-2.5 text-sm text-text-hi outline-none placeholder:text-text-low"
                 />
                 <MicButton alvo={caixaTexto} className="mb-1" titulo="Ditar mensagem" />
