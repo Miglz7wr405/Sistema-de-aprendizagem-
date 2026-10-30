@@ -9,6 +9,7 @@ import {
   EyeOff,
   FileVideo,
   GripVertical,
+  HardDrive,
   Link2,
   Lock,
   Pencil,
@@ -25,6 +26,8 @@ import { NIVEL_LABEL } from "@/lib/types";
 import { driveId, linkValido, miniaturaDoLink, tipoDoLink } from "@/lib/video";
 import { cn, tamanhoLegivel } from "@/lib/utils";
 import { AvisoDrivePrivado, useEstadoDrive } from "../components/Drive";
+import { BotaoDrive, BotaoImportarPasta } from "../components/DrivePicker";
+import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -185,7 +188,7 @@ type FormCurso = {
 type FormAula = {
   titulo: string;
   descricao: string;
-  fonte: "link" | "upload";
+  fonte: "link" | "upload" | "drive";
   url: string;
   ficheiro: File | null;
 };
@@ -411,7 +414,7 @@ export default function ConteudoPage() {
     if (!curso) return;
     const titulo = fa.titulo.trim() || `Aula ${aulas.length + 1}`;
     const editar = modalAula !== "nova" ? modalAula : null;
-    if (fa.fonte === "link") {
+    if (fa.fonte === "link" || fa.fonte === "drive") {
       if (!linkValido(fa.url))
         return toast.error("Cola um link válido (YouTube, Vimeo, Loom, Drive...).");
     } else if (!fa.ficheiro && !(editar?.tipo === "upload" && editar.storage_path)) {
@@ -425,7 +428,7 @@ export default function ConteudoPage() {
     const ok = await tentar(
       async () => {
         let fonte: Partial<Aula>;
-        if (fa.fonte === "link") {
+        if (fa.fonte === "link" || fa.fonte === "drive") {
           fonte = { tipo: tipoDoLink(fa.url.trim()), url: fa.url.trim(), storage_path: null };
         } else if (fa.ficheiro) {
           const caminho = await Ficheiros.enviar("aulas", fa.ficheiro);
@@ -464,6 +467,29 @@ export default function ConteudoPage() {
     setArrastar(null);
     await Aulas.reordenar(nova);
     await refetch();
+  }
+
+  async function importarPastaDrive(ficheiros: FicheiroDrive[]) {
+    if (!curso) return;
+    const ok = await tentar(
+      async () => {
+        for (let i = 0; i < ficheiros.length; i++) {
+          const f = ficheiros[i];
+          await Aulas.criar({
+            curso_id: curso.id,
+            titulo: limparNomeFicheiro(f.nome),
+            descricao: null,
+            tipo: "link",
+            url: f.url,
+            storage_path: null,
+            ordem: aulas.length + i,
+          });
+        }
+      },
+      `${ficheiros.length} aula${ficheiros.length !== 1 ? "s" : ""} importada${ficheiros.length !== 1 ? "s" : ""} do Drive`,
+    );
+    if (!ok) return;
+    toast.info('Verifica se os vídeos estão partilhados como "Qualquer pessoa com o link".');
   }
 
   // Em telemóvel mostra só a coluna mais funda escolhida.
@@ -643,6 +669,7 @@ export default function ConteudoPage() {
                     <ExternalLink className="size-4" />
                   </Button>
                 </Link>
+                <BotaoImportarPasta onImportar={importarPastaDrive} disabled={busy} />
                 <Button className="h-8 px-3" onClick={() => abrirAula("nova")}>
                   <Plus className="size-4" /> Aula
                 </Button>
@@ -864,11 +891,12 @@ export default function ConteudoPage() {
           </Field>
           <div>
             <p className="mb-1.5 text-sm font-medium text-text-hi">Vídeo</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {(
                 [
                   ["link", Link2, "Colar link", "YouTube, Vimeo, Loom, Drive"],
                   ["upload", Upload, "Carregar vídeo", "Ficheiro até 50 MB"],
+                  ["drive", HardDrive, "Google Drive", "Escolher do Drive"],
                 ] as const
               ).map(([v, Icone, titulo, texto]) => (
                 <button
@@ -877,6 +905,7 @@ export default function ConteudoPage() {
                   onClick={() => setFa({ ...fa, fonte: v })}
                   className={cn(
                     "flex items-start gap-2 rounded-lg border p-3 text-left",
+                    v === "drive" && !import.meta.env.VITE_GOOGLE_CLIENT_ID && "hidden",
                     fa.fonte === v
                       ? "border-accent bg-accent-soft"
                       : "border-hairline hover:border-accent/50",
@@ -900,7 +929,9 @@ export default function ConteudoPage() {
             <Field
               label="Link do vídeo"
               required
-              hint="YouTube, Vimeo, Loom ou Google Drive. Dica: no Drive, partilha a PASTA do curso como “Qualquer pessoa com o link” — todos os vídeos lá dentro ficam visíveis para os alunos."
+              hint={
+                'YouTube, Vimeo, Loom ou Google Drive. Dica: no Drive, partilha a PASTA do curso como "Qualquer pessoa com o link" — todos os vídeos lá dentro ficam visíveis para os alunos.'
+              }
             >
               <Input
                 type="url"
@@ -911,6 +942,25 @@ export default function ConteudoPage() {
               />
               <PreVisualizacaoLink url={fa.url} />
             </Field>
+          ) : fa.fonte === "drive" ? (
+            <div className="space-y-3">
+              <BotaoDrive
+                className="w-full"
+                onEscolher={(f) =>
+                  setFa({
+                    ...fa,
+                    url: f.url,
+                    titulo: fa.titulo || limparNomeFicheiro(f.nome),
+                  })
+                }
+              />
+              {fa.url && (
+                <Field label="Vídeo escolhido">
+                  <Input type="url" readOnly value={fa.url} className="bg-bg-base text-text-mid" />
+                  <PreVisualizacaoLink url={fa.url} />
+                </Field>
+              )}
+            </div>
           ) : (
             <Field
               label="Ficheiro de vídeo"
