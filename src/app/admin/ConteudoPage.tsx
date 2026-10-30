@@ -28,6 +28,7 @@ import { cn, tamanhoLegivel } from "@/lib/utils";
 import { AvisoDrivePrivado, useEstadoDrive } from "../components/Drive";
 import { BotaoDrive, BotaoImportarPasta } from "../components/DrivePicker";
 import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
+import { BotaoImportarVimeo, type VideoVimeo } from "../components/VimeoImporter";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -492,6 +493,36 @@ export default function ConteudoPage() {
     toast.info('Verifica se os vídeos estão partilhados como "Qualquer pessoa com o link".');
   }
 
+  async function importarVimeo(videos: VideoVimeo[]) {
+    if (!curso) return;
+    const ok = await tentar(
+      async () => {
+        for (let i = 0; i < videos.length; i++) {
+          const v = videos[i];
+          await Aulas.criar({
+            curso_id: curso.id,
+            titulo: v.nome,
+            descricao: null,
+            tipo: "link",
+            url: v.url,
+            storage_path: null,
+            ordem: aulas.length + i,
+          });
+        }
+      },
+      `${videos.length} aula${videos.length !== 1 ? "s" : ""} importada${videos.length !== 1 ? "s" : ""} do Vimeo`,
+    );
+    if (!ok) return;
+    const privados = videos.filter(
+      (v) => v.privacidade !== "anybody" && v.privacidade !== "unlisted",
+    );
+    if (privados.length > 0) {
+      toast.info(
+        `${privados.length} vídeo${privados.length > 1 ? "s precisam" : " precisa"} de ser "Não listado" no Vimeo para os alunos verem.`,
+      );
+    }
+  }
+
   // Em telemóvel mostra só a coluna mais funda escolhida.
   const nivelMovel = curso ? 3 : seccao ? 2 : 1;
 
@@ -669,6 +700,7 @@ export default function ConteudoPage() {
                     <ExternalLink className="size-4" />
                   </Button>
                 </Link>
+                <BotaoImportarVimeo onImportar={importarVimeo} disabled={busy} />
                 <BotaoImportarPasta onImportar={importarPastaDrive} disabled={busy} />
                 <Button className="h-8 px-3" onClick={() => abrirAula("nova")}>
                   <Plus className="size-4" /> Aula
