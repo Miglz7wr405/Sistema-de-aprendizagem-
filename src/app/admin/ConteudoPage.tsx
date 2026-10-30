@@ -10,6 +10,7 @@ import {
   FileVideo,
   GripVertical,
   HardDrive,
+  Image,
   Link2,
   Lock,
   Pencil,
@@ -17,6 +18,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -185,6 +187,7 @@ type FormCurso = {
   duracao: string;
   publicado: boolean;
   seccao_id: string;
+  capa_url: string;
 };
 type FormAula = {
   titulo: string;
@@ -222,6 +225,7 @@ export default function ConteudoPage() {
     duracao: "",
     publicado: true,
     seccao_id: "",
+    capa_url: "",
   });
   const [modalAula, setModalAula] = useState<Aula | "nova" | null>(null);
   const [fa, setFa] = useState<FormAula>({
@@ -350,6 +354,7 @@ export default function ConteudoPage() {
             duracao: "",
             publicado: true,
             seccao_id: seccaoId ?? "",
+            capa_url: "",
           }
         : {
             titulo: c.titulo,
@@ -358,6 +363,7 @@ export default function ConteudoPage() {
             duracao: c.duracao ?? "",
             publicado: c.publicado,
             seccao_id: c.seccao_id,
+            capa_url: c.capa_url ?? "",
           },
     );
   }
@@ -371,6 +377,7 @@ export default function ConteudoPage() {
       duracao: fc.duracao.trim() || null,
       publicado: fc.publicado,
       seccao_id: fc.seccao_id,
+      capa_url: fc.capa_url.trim() || null,
     };
     const ok = await tentar(async () => {
       if (modalCurso === "novo") {
@@ -889,6 +896,42 @@ export default function ConteudoPage() {
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Capa do curso" hint="Cola um URL de imagem ou deixa vazio para usar a miniatura da primeira aula.">
+            <div className="flex gap-2">
+              <Input
+                type="url"
+                inputMode="url"
+                placeholder="https://exemplo.com/capa.png"
+                value={fc.capa_url}
+                onChange={(e) => setFc({ ...fc, capa_url: e.target.value })}
+                className="flex-1"
+              />
+              {fc.capa_url && (
+                <button
+                  type="button"
+                  onClick={() => setFc({ ...fc, capa_url: "" })}
+                  className="grid size-10 shrink-0 place-items-center rounded-lg border border-hairline text-text-low hover:bg-red-50 hover:text-red-600"
+                  title="Remover capa"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+            {fc.capa_url && (
+              <img
+                src={fc.capa_url}
+                alt="Pré-visualização da capa"
+                className="mt-2 h-32 rounded-lg object-cover"
+                onError={(e) => (e.currentTarget.style.display = "none")}
+              />
+            )}
+            {!fc.capa_url && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-low">
+                <Image className="size-3.5" />
+                Sem capa definida — será usada a miniatura do primeiro vídeo do curso.
+              </p>
+            )}
           </Field>
           <Switch
             checked={fc.publicado}
