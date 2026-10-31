@@ -59,10 +59,27 @@ function MarcaDeAgua() {
   );
 }
 
+// Abaixo desta largura o player do Drive passa ao layout de telemóvel e corta o vídeo
+// (só se vê o centro). Desenhamo-lo com esta largura e reduzimos com CSS.
+const LARGURA_MIN_DRIVE = 640;
+
+function useLargura<T extends HTMLElement>() {
+  const [el, setEl] = useState<T | null>(null);
+  const [largura, setLargura] = useState(0);
+  useEffect(() => {
+    if (!el) return;
+    const obs = new ResizeObserver(([entrada]) => setLargura(entrada.contentRect.width));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [el]);
+  return [setEl, largura] as const;
+}
+
 function Leitor({ aula }: { aula: Aula }) {
   const [urlFicheiro, setUrlFicheiro] = useState<string | null>(null);
   const [erro, setErro] = useState(false);
   const estadoDrive = useEstadoDrive(aula.tipo === "upload" ? null : aula.url);
+  const [refCaixa, largura] = useLargura<HTMLDivElement>();
 
   useEffect(() => {
     const bloquear = (e: KeyboardEvent) => {
@@ -113,15 +130,32 @@ function Leitor({ aula }: { aula: Aula }) {
   const leitor = leitorDoLink(aula.url ?? "");
   if (leitor.tipo === "iframe") {
     const ehDrive = Boolean(driveId(aula.url));
+    const escala =
+      ehDrive && largura > 0 && largura < LARGURA_MIN_DRIVE ? largura / LARGURA_MIN_DRIVE : 1;
     return (
       <div>
-        <div className={caixa} style={{ aspectRatio: "16 / 9" }} onContextMenu={semMenu}>
+        <div
+          ref={refCaixa}
+          className={caixa}
+          style={{ aspectRatio: "16 / 9" }}
+          onContextMenu={semMenu}
+        >
           {/* O player do Drive não reproduz dentro de um iframe com sandbox. */}
           <iframe
             key={aula.id}
             src={leitor.src}
             title={aula.titulo}
-            className="absolute inset-0 h-full w-full"
+            className={escala < 1 ? "absolute left-0 top-0" : "absolute inset-0 h-full w-full"}
+            style={
+              escala < 1
+                ? {
+                    width: LARGURA_MIN_DRIVE,
+                    height: (LARGURA_MIN_DRIVE * 9) / 16,
+                    transform: `scale(${escala})`,
+                    transformOrigin: "top left",
+                  }
+                : undefined
+            }
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
             allowFullScreen
           />
