@@ -341,3 +341,18 @@ export const Ficheiros = {
 };
 
 export const LIMITE_UPLOAD = 50 * 1024 * 1024;
+
+// ─── Capas dos cursos (bucket público, URL fixo guardado em cursos.capa_url) ─
+
+export const LIMITE_CAPA = 5 * 1024 * 1024;
+
+export const Capas = {
+  async enviar(file: File) {
+    const caminho = `${crypto.randomUUID()}-${nomeFicheiroSeguro(file.name)}`;
+    const { error } = await supabase.storage
+      .from("capas")
+      .upload(caminho, file, { contentType: file.type || undefined, upsert: false });
+    falhar(error);
+    return supabase.storage.from("capas").getPublicUrl(caminho).data.publicUrl;
+  },
+};
