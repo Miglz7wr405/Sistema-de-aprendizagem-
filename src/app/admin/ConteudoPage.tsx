@@ -12,6 +12,7 @@ import {
   HardDrive,
   Image,
   Link2,
+  Loader2,
   Lock,
   Pencil,
   PlayCircle,
@@ -22,7 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Aulas, Cursos, Ficheiros, LIMITE_UPLOAD, Seccoes } from "@/lib/db";
+import { Aulas, Capas, Cursos, Ficheiros, LIMITE_CAPA, LIMITE_UPLOAD, Seccoes } from "@/lib/db";
 import type { Aula, Curso, Nivel, Seccao, Visibilidade } from "@/lib/types";
 import { NIVEL_LABEL } from "@/lib/types";
 import { driveId, linkValido, miniaturaDoLink, tipoDoLink } from "@/lib/video";
@@ -236,7 +237,23 @@ export default function ConteudoPage() {
     ficheiro: null,
   });
   const [busy, setBusy] = useState(false);
+  const [aEnviarCapa, setAEnviarCapa] = useState(false);
   const [arrastar, setArrastar] = useState<number | null>(null);
+
+  async function enviarCapa(file: File) {
+    if (!file.type.startsWith("image/")) return toast.error("Escolhe um ficheiro de imagem.");
+    if (file.size > LIMITE_CAPA) return toast.error("A imagem tem de ter até 5 MB.");
+    setAEnviarCapa(true);
+    try {
+      const url = await Capas.enviar(file);
+      setFc((atual) => ({ ...atual, capa_url: url }));
+      toast.success("Imagem carregada — carrega em Guardar.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível carregar a imagem.");
+    } finally {
+      setAEnviarCapa(false);
+    }
+  }
 
   const seccao = data?.seccoes.find((s) => s.id === seccaoId) ?? null;
   const curso = data?.cursos.find((c) => c.id === cursoId) ?? null;
@@ -897,12 +914,39 @@ export default function ConteudoPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Capa do curso" hint="Cola um URL de imagem ou deixa vazio para usar a miniatura da primeira aula.">
+          <Field
+            label="Capa do curso"
+            hint="Carrega uma imagem (até 5 MB) ou cola um link. Vazio = miniatura da primeira aula."
+          >
+            <label
+              className={cn(
+                "mb-2 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-sm font-medium text-text-mid transition hover:border-accent hover:text-accent",
+                aEnviarCapa && "pointer-events-none opacity-60",
+              )}
+            >
+              {aEnviarCapa ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Upload className="size-4" />
+              )}
+              {aEnviarCapa ? "A carregar imagem..." : "Carregar imagem do dispositivo"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="sr-only"
+                disabled={aEnviarCapa}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) enviarCapa(f);
+                }}
+              />
+            </label>
             <div className="flex gap-2">
               <Input
                 type="url"
                 inputMode="url"
-                placeholder="https://exemplo.com/capa.png"
+                placeholder="ou cola o link: https://exemplo.com/capa.png"
                 value={fc.capa_url}
                 onChange={(e) => setFc({ ...fc, capa_url: e.target.value })}
                 className="flex-1"
@@ -920,6 +964,7 @@ export default function ConteudoPage() {
             </div>
             {fc.capa_url && (
               <img
+                key={fc.capa_url}
                 src={fc.capa_url}
                 alt="Pré-visualização da capa"
                 className="mt-2 h-32 rounded-lg object-cover"
