@@ -36,10 +36,46 @@ import {
 } from "../components/primitives";
 import { useData } from "../use-data";
 
+const BLOQUEAR_EMBED = "allow-scripts allow-same-origin allow-presentation";
+
+function teclaBloqueada(e: KeyboardEvent) {
+  const k = e.key.toLowerCase();
+  const mod = e.ctrlKey || e.metaKey;
+  if (k === "f12") return true;
+  if (mod && ["s", "u", "p"].includes(k)) return true;
+  if (mod && e.shiftKey && ["i", "j", "c"].includes(k)) return true;
+  return false;
+}
+
+function MarcaDeAgua() {
+  const { sessao } = useAuth();
+  const email = sessao?.user.email;
+  if (!email) return null;
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 select-none overflow-hidden"
+    >
+      <span className="absolute left-3 top-3 text-[11px] font-medium text-white/25">{email}</span>
+      <span className="absolute bottom-14 right-4 text-[11px] font-medium text-white/25">
+        {email}
+      </span>
+    </div>
+  );
+}
+
 function Leitor({ aula }: { aula: Aula }) {
   const [urlFicheiro, setUrlFicheiro] = useState<string | null>(null);
   const [erro, setErro] = useState(false);
   const estadoDrive = useEstadoDrive(aula.tipo === "upload" ? null : aula.url);
+
+  useEffect(() => {
+    const bloquear = (e: KeyboardEvent) => {
+      if (teclaBloqueada(e)) e.preventDefault();
+    };
+    window.addEventListener("keydown", bloquear, true);
+    return () => window.removeEventListener("keydown", bloquear, true);
+  }, []);
 
   useEffect(() => {
     setUrlFicheiro(null);
@@ -51,18 +87,22 @@ function Leitor({ aula }: { aula: Aula }) {
     }
   }, [aula.id, aula.tipo, aula.storage_path]);
 
-  const caixa = "relative w-full overflow-hidden rounded-2xl border border-hairline bg-black";
+  const caixa =
+    "relative w-full select-none overflow-hidden rounded-2xl border border-hairline bg-black";
+  const semMenu = (e: React.MouseEvent) => e.preventDefault();
 
   if (aula.tipo === "upload") {
     return (
-      <div className={caixa} style={{ aspectRatio: "16 / 9" }}>
+      <div className={caixa} style={{ aspectRatio: "16 / 9" }} onContextMenu={semMenu}>
         {urlFicheiro ? (
           <video
             key={urlFicheiro}
             src={urlFicheiro}
             controls
             playsInline
-            controlsList="nodownload"
+            controlsList="nodownload noremoteplayback"
+            disablePictureInPicture
+            onContextMenu={semMenu}
             className="absolute inset-0 h-full w-full"
           />
         ) : (
@@ -70,6 +110,7 @@ function Leitor({ aula }: { aula: Aula }) {
             {erro ? "Não foi possível abrir o vídeo." : <Loader2 className="size-6 animate-spin" />}
           </div>
         )}
+        <MarcaDeAgua />
       </div>
     );
   }
@@ -79,13 +120,16 @@ function Leitor({ aula }: { aula: Aula }) {
     const ehDrive = Boolean(driveId(aula.url));
     return (
       <div>
-        <div className={caixa} style={{ aspectRatio: "16 / 9" }}>
+        <div className={caixa} style={{ aspectRatio: "16 / 9" }} onContextMenu={semMenu}>
+          {/* Sem allow-popups/allow-downloads: o player não abre outras janelas nem descarrega. */}
           <iframe
             key={aula.id}
             src={leitor.src}
             title={aula.titulo}
             className="absolute inset-0 h-full w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            sandbox={BLOQUEAR_EMBED}
+            referrerPolicy="no-referrer"
+            allow="autoplay; encrypted-media; fullscreen"
             allowFullScreen
           />
           {ehDrive && (
@@ -94,9 +138,10 @@ function Leitor({ aula }: { aula: Aula }) {
               aria-hidden="true"
               data-capa-drive
               className="absolute right-0 top-0 h-16 w-20"
-              onContextMenu={(e) => e.preventDefault()}
+              onContextMenu={semMenu}
             />
           )}
+          <MarcaDeAgua />
         </div>
         {estadoDrive === "talvez_privado" && <AvisoDrivePrivado className="mt-3" />}
       </div>
@@ -104,14 +149,18 @@ function Leitor({ aula }: { aula: Aula }) {
   }
   if (leitor.tipo === "video") {
     return (
-      <div className={caixa} style={{ aspectRatio: "16 / 9" }}>
+      <div className={caixa} style={{ aspectRatio: "16 / 9" }} onContextMenu={semMenu}>
         <video
           key={leitor.src}
           src={leitor.src}
           controls
           playsInline
+          controlsList="nodownload noremoteplayback"
+          disablePictureInPicture
+          onContextMenu={semMenu}
           className="absolute inset-0 h-full w-full"
         />
+        <MarcaDeAgua />
       </div>
     );
   }
