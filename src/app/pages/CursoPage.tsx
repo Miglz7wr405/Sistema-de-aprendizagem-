@@ -36,8 +36,6 @@ import {
 } from "../components/primitives";
 import { useData } from "../use-data";
 
-const BLOQUEAR_EMBED = "allow-scripts allow-same-origin allow-presentation";
-
 function teclaBloqueada(e: KeyboardEvent) {
   const k = e.key.toLowerCase();
   const mod = e.ctrlKey || e.metaKey;
@@ -56,10 +54,7 @@ function MarcaDeAgua() {
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 select-none overflow-hidden"
     >
-      <span className="absolute left-3 top-3 text-[11px] font-medium text-white/25">{email}</span>
-      <span className="absolute bottom-14 right-4 text-[11px] font-medium text-white/25">
-        {email}
-      </span>
+      <span className="absolute left-3 top-3 text-[10px] font-medium text-white/30">{email}</span>
     </div>
   );
 }
@@ -121,23 +116,21 @@ function Leitor({ aula }: { aula: Aula }) {
     return (
       <div>
         <div className={caixa} style={{ aspectRatio: "16 / 9" }} onContextMenu={semMenu}>
-          {/* Sem allow-popups/allow-downloads: o player não abre outras janelas nem descarrega. */}
+          {/* O player do Drive não reproduz dentro de um iframe com sandbox. */}
           <iframe
             key={aula.id}
             src={leitor.src}
             title={aula.titulo}
             className="absolute inset-0 h-full w-full"
-            sandbox={BLOQUEAR_EMBED}
-            referrerPolicy="no-referrer"
-            allow="autoplay; encrypted-media; fullscreen"
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
             allowFullScreen
           />
           {ehDrive && (
-            // Tapa o botão "abrir noutra janela" do Drive: o aluno vê a aula dentro da academia.
+            // Esconde e bloqueia o botão "abrir noutra janela" do Drive.
             <div
               aria-hidden="true"
               data-capa-drive
-              className="absolute right-0 top-0 h-16 w-20"
+              className="absolute right-0 top-0 h-14 w-16 rounded-bl-2xl bg-black"
               onContextMenu={semMenu}
             />
           )}
