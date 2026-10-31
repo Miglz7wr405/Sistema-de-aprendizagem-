@@ -49,8 +49,14 @@ export function leitorDoLink(url: string): Leitor {
   const yt = youtubeId(url);
   if (yt) return { tipo: "iframe", src: `https://www.youtube-nocookie.com/embed/${yt}?rel=0` };
 
-  const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeo) return { tipo: "iframe", src: `https://player.vimeo.com/video/${vimeo[1]}` };
+  const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/([0-9a-f]+))?/);
+  if (vimeo) {
+    // Vídeos "não listados" só tocam com o hash: vimeo.com/ID/HASH ou ...?h=HASH
+    const hash = vimeo[2] ?? url.match(/[?&]h=([0-9a-f]+)/)?.[1];
+    const params = new URLSearchParams({ title: "0", byline: "0", portrait: "0", dnt: "1" });
+    if (hash) params.set("h", hash);
+    return { tipo: "iframe", src: `https://player.vimeo.com/video/${vimeo[1]}?${params}` };
+  }
 
   const loom = url.match(/loom\.com\/(?:share|embed)\/([\w-]+)/);
   if (loom) return { tipo: "iframe", src: `https://www.loom.com/embed/${loom[1]}` };
