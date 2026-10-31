@@ -54,7 +54,7 @@ function MarcaDeAgua() {
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 select-none overflow-hidden"
     >
-      <span className="absolute left-3 top-3 text-[10px] font-medium text-white/30">{email}</span>
+      <span className="absolute left-3 top-7 text-[10px] font-medium text-white/30">{email}</span>
     </div>
   );
 }
@@ -62,6 +62,9 @@ function MarcaDeAgua() {
 // Abaixo desta largura o player do Drive passa ao layout de telemóvel e corta o vídeo
 // (só se vê o centro). Desenhamo-lo com esta largura e reduzimos com CSS.
 const LARGURA_MIN_DRIVE = 640;
+// No layout de telemóvel o Drive põe a fila de controlos (pausa, ±10s, tempo) abaixo
+// do vídeo 16:9; esta altura extra deixa-a dentro da caixa.
+const ALTURA_DRIVE_MOVEL = 460;
 
 function useLargura<T extends HTMLElement>() {
   const [el, setEl] = useState<T | null>(null);
@@ -137,7 +140,9 @@ function Leitor({ aula }: { aula: Aula }) {
         <div
           ref={refCaixa}
           className={caixa}
-          style={{ aspectRatio: "16 / 9" }}
+          style={{
+            aspectRatio: escala < 1 ? `${LARGURA_MIN_DRIVE} / ${ALTURA_DRIVE_MOVEL}` : "16 / 9",
+          }}
           onContextMenu={semMenu}
         >
           {/* O player do Drive não reproduz dentro de um iframe com sandbox. */}
@@ -150,7 +155,7 @@ function Leitor({ aula }: { aula: Aula }) {
               escala < 1
                 ? {
                     width: LARGURA_MIN_DRIVE,
-                    height: (LARGURA_MIN_DRIVE * 9) / 16,
+                    height: ALTURA_DRIVE_MOVEL,
                     transform: `scale(${escala})`,
                     transformOrigin: "top left",
                   }
