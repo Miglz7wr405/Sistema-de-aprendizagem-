@@ -25,6 +25,7 @@ export type Seccao = {
   titulo: string;
   descricao: string | null;
   icone: string | null;
+  capa_url: string | null;
   visibilidade: Visibilidade;
   ordem: number;
   created_at: string;

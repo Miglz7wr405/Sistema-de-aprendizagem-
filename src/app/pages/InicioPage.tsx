@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen, GraduationCap, PlayCircle, Trophy } from "lucide-
 import { primeiroNome } from "@/lib/utils";
 import { miniaturaDoLink } from "@/lib/video";
 import { useAuth } from "../auth";
-import { aulasDoCurso, CabecalhoSeccao, CursoCard, progressoDoCurso } from "../components/Catalogo";
+import { aulasDoCurso, progressoDoCurso, SeccaoCard } from "../components/Catalogo";
 import { Button, Carregando, EmptyState, Erro, ProgressBar } from "../components/primitives";
 import { useCatalogo } from "../use-catalogo";
 
@@ -132,25 +132,14 @@ export default function InicioPage() {
           }
         />
       ) : (
-        seccoesComCursos.map(({ seccao, cursos }) => (
-          <section key={seccao.id}>
-            <CabecalhoSeccao seccao={seccao} nCursos={cursos.length} link />
-            {cursos.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-hairline px-4 py-6 text-center text-sm text-text-low">
-                Secção vazia.{" "}
-                <Link to={`/admin/conteudo?seccao=${seccao.id}`} className="text-accent">
-                  Adicionar curso
-                </Link>
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {cursos.map((c) => (
-                  <CursoCard key={c.id} cat={cat} curso={c} />
-                ))}
-              </div>
-            )}
-          </section>
-        ))
+        <section>
+          <h2 className="mb-3 font-display text-lg font-bold text-text-hi">Áreas</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {seccoesComCursos.map(({ seccao, cursos }) => (
+              <SeccaoCard key={seccao.id} cat={cat} seccao={seccao} cursos={cursos} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

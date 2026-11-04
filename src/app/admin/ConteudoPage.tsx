@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   FileVideo,
+  FolderInput,
   GripVertical,
   HardDrive,
   Image,
@@ -180,7 +181,13 @@ function PreVisualizacaoLink({ url }: { url: string }) {
 
 // ─── Formulários ─────────────────────────────────────────────────────────
 
-type FormSeccao = { titulo: string; descricao: string; icone: string; visibilidade: Visibilidade };
+type FormSeccao = {
+  titulo: string;
+  descricao: string;
+  icone: string;
+  capa_url: string;
+  visibilidade: Visibilidade;
+};
 type FormCurso = {
   titulo: string;
   descricao: string;
@@ -198,6 +205,91 @@ type FormAula = {
   url: string;
   ficheiro: File | null;
 };
+
+function CampoCapa({
+  valor,
+  onChange,
+  semCapa,
+}: {
+  valor: string;
+  onChange: (url: string) => void;
+  semCapa: string;
+}) {
+  const [aEnviar, setAEnviar] = useState(false);
+
+  async function enviar(file: File) {
+    if (!file.type.startsWith("image/")) return toast.error("Escolhe um ficheiro de imagem.");
+    if (file.size > LIMITE_CAPA) return toast.error("A imagem tem de ter até 5 MB.");
+    setAEnviar(true);
+    try {
+      onChange(await Capas.enviar(file));
+      toast.success("Imagem carregada — carrega em Guardar.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível carregar a imagem.");
+    } finally {
+      setAEnviar(false);
+    }
+  }
+
+  return (
+    <>
+      <label
+        className={cn(
+          "mb-2 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-sm font-medium text-text-mid transition hover:border-accent hover:text-accent",
+          aEnviar && "pointer-events-none opacity-60",
+        )}
+      >
+        {aEnviar ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+        {aEnviar ? "A carregar imagem..." : "Carregar imagem do dispositivo"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="sr-only"
+          disabled={aEnviar}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) enviar(f);
+          }}
+        />
+      </label>
+      <div className="flex gap-2">
+        <Input
+          type="url"
+          inputMode="url"
+          placeholder="ou cola o link: https://exemplo.com/capa.png"
+          value={valor}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1"
+        />
+        {valor && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="grid size-10 shrink-0 place-items-center rounded-lg border border-hairline text-text-low hover:bg-red-50 hover:text-red-600"
+            title="Remover capa"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+      {valor ? (
+        <img
+          key={valor}
+          src={valor}
+          alt="Pré-visualização da capa"
+          className="mt-2 h-32 rounded-lg object-cover"
+          onError={(e) => (e.currentTarget.style.display = "none")}
+        />
+      ) : (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-low">
+          <Image className="size-3.5" />
+          {semCapa}
+        </p>
+      )}
+    </>
+  );
+}
 
 export default function ConteudoPage() {
   const [params, setParams] = useSearchParams();
@@ -217,6 +309,7 @@ export default function ConteudoPage() {
     titulo: "",
     descricao: "",
     icone: "📚",
+    capa_url: "",
     visibilidade: "academia",
   });
   const [modalCurso, setModalCurso] = useState<Curso | "novo" | null>(null);
@@ -239,23 +332,9 @@ export default function ConteudoPage() {
     ficheiro: null,
   });
   const [busy, setBusy] = useState(false);
-  const [aEnviarCapa, setAEnviarCapa] = useState(false);
   const [arrastar, setArrastar] = useState<number | null>(null);
-
-  async function enviarCapa(file: File) {
-    if (!file.type.startsWith("image/")) return toast.error("Escolhe um ficheiro de imagem.");
-    if (file.size > LIMITE_CAPA) return toast.error("A imagem tem de ter até 5 MB.");
-    setAEnviarCapa(true);
-    try {
-      const url = await Capas.enviar(file);
-      setFc((atual) => ({ ...atual, capa_url: url }));
-      toast.success("Imagem carregada — carrega em Guardar.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível carregar a imagem.");
-    } finally {
-      setAEnviarCapa(false);
-    }
-  }
+  const [cursoAMover, setCursoAMover] = useState<Curso | null>(null);
+  const [destinoMover, setDestinoMover] = useState("");
 
   const seccao = data?.seccoes.find((s) => s.id === seccaoId) ?? null;
   const curso = data?.cursos.find((c) => c.id === cursoId) ?? null;
@@ -315,11 +394,12 @@ export default function ConteudoPage() {
     setModalSeccao(s);
     setFs(
       s === "nova"
-        ? { titulo: "", descricao: "", icone: "📚", visibilidade: "academia" }
+        ? { titulo: "", descricao: "", icone: "📚", capa_url: "", visibilidade: "academia" }
         : {
             titulo: s.titulo,
             descricao: s.descricao ?? "",
             icone: s.icone ?? "📚",
+            capa_url: s.capa_url ?? "",
             visibilidade: s.visibilidade,
           },
     );
@@ -330,6 +410,7 @@ export default function ConteudoPage() {
       titulo: fs.titulo.trim(),
       descricao: fs.descricao.trim() || null,
       icone: fs.icone.trim() || "📚",
+      capa_url: fs.capa_url.trim() || null,
       visibilidade: fs.visibilidade,
     };
     const ok = await tentar(async () => {
@@ -714,6 +795,15 @@ export default function ConteudoPage() {
                       <EyeOff className="size-4 text-amber-600" />
                     )}
                   </BotaoIcone>
+                  <BotaoIcone
+                    label="Mover para outra secção"
+                    onClick={() => {
+                      setCursoAMover(c);
+                      setDestinoMover("");
+                    }}
+                  >
+                    <FolderInput className="size-4" />
+                  </BotaoIcone>
                   <BotaoIcone label="Editar curso" onClick={() => abrirCurso(c)}>
                     <Pencil className="size-4" />
                   </BotaoIcone>
@@ -866,6 +956,16 @@ export default function ConteudoPage() {
               onChange={(e) => setFs({ ...fs, descricao: e.target.value })}
             />
           </Field>
+          <Field
+            label="Capa da secção"
+            hint="Aparece no cartão da secção no início. Carrega uma imagem (até 5 MB) ou cola um link."
+          >
+            <CampoCapa
+              valor={fs.capa_url}
+              onChange={(capa_url) => setFs((atual) => ({ ...atual, capa_url }))}
+              semCapa="Sem capa definida — será usada a capa do primeiro curso da secção."
+            />
+          </Field>
           <EscolhaVisibilidade
             valor={fs.visibilidade}
             onChange={(v) => setFs({ ...fs, visibilidade: v })}
@@ -879,6 +979,58 @@ export default function ConteudoPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal mover curso */}
+      <Modal
+        open={cursoAMover !== null}
+        onClose={() => !busy && setCursoAMover(null)}
+        title="Mover curso para outra secção"
+      >
+        {cursoAMover && (
+          <div className="space-y-4">
+            <p className="text-sm text-text-mid">
+              <span className="font-semibold text-text-hi">{cursoAMover.titulo}</span> está em{" "}
+              {data.seccoes.find((s) => s.id === cursoAMover.seccao_id)?.titulo ?? "—"}. As aulas e
+              o progresso dos alunos mantêm-se.
+            </p>
+            <Field label="Mover para">
+              <Select value={destinoMover} onChange={(e) => setDestinoMover(e.target.value)}>
+                <option value="">Escolhe a secção...</option>
+                {data.seccoes
+                  .filter((s) => s.id !== cursoAMover.seccao_id)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.icone} {s.titulo} {s.visibilidade === "privada" ? "(privada)" : ""}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCursoAMover(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!destinoMover || busy}
+                onClick={async () => {
+                  const c = cursoAMover;
+                  const destino = destinoMover;
+                  const ordem = data.cursos.filter((x) => x.seccao_id === destino).length;
+                  const ok = await tentar(
+                    () => Cursos.atualizar(c.id, { seccao_id: destino, ordem }),
+                    "Curso movido",
+                  );
+                  if (ok) {
+                    setCursoAMover(null);
+                    escolher(destino, c.id);
+                  }
+                }}
+              >
+                {busy ? "A mover..." : "Mover"}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Modal curso */}
@@ -936,65 +1088,11 @@ export default function ConteudoPage() {
             label="Capa do curso"
             hint="Carrega uma imagem (até 5 MB) ou cola um link. Vazio = miniatura da primeira aula."
           >
-            <label
-              className={cn(
-                "mb-2 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-sm font-medium text-text-mid transition hover:border-accent hover:text-accent",
-                aEnviarCapa && "pointer-events-none opacity-60",
-              )}
-            >
-              {aEnviarCapa ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Upload className="size-4" />
-              )}
-              {aEnviarCapa ? "A carregar imagem..." : "Carregar imagem do dispositivo"}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                className="sr-only"
-                disabled={aEnviarCapa}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  if (f) enviarCapa(f);
-                }}
-              />
-            </label>
-            <div className="flex gap-2">
-              <Input
-                type="url"
-                inputMode="url"
-                placeholder="ou cola o link: https://exemplo.com/capa.png"
-                value={fc.capa_url}
-                onChange={(e) => setFc({ ...fc, capa_url: e.target.value })}
-                className="flex-1"
-              />
-              {fc.capa_url && (
-                <button
-                  type="button"
-                  onClick={() => setFc({ ...fc, capa_url: "" })}
-                  className="grid size-10 shrink-0 place-items-center rounded-lg border border-hairline text-text-low hover:bg-red-50 hover:text-red-600"
-                  title="Remover capa"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
-            </div>
-            {fc.capa_url && (
-              <img
-                key={fc.capa_url}
-                src={fc.capa_url}
-                alt="Pré-visualização da capa"
-                className="mt-2 h-32 rounded-lg object-cover"
-                onError={(e) => (e.currentTarget.style.display = "none")}
-              />
-            )}
-            {!fc.capa_url && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-low">
-                <Image className="size-3.5" />
-                Sem capa definida — será usada a miniatura do primeiro vídeo do curso.
-              </p>
-            )}
+            <CampoCapa
+              valor={fc.capa_url}
+              onChange={(capa_url) => setFc((atual) => ({ ...atual, capa_url }))}
+              semCapa="Sem capa definida — será usada a miniatura do primeiro vídeo do curso."
+            />
           </Field>
           <Switch
             checked={fc.publicado}
