@@ -193,6 +193,7 @@ type FormCurso = {
 type FormAula = {
   titulo: string;
   descricao: string;
+  modulo: string;
   fonte: "link" | "upload" | "drive";
   url: string;
   ficheiro: File | null;
@@ -232,6 +233,7 @@ export default function ConteudoPage() {
   const [fa, setFa] = useState<FormAula>({
     titulo: "",
     descricao: "",
+    modulo: "",
     fonte: "link",
     url: "",
     ficheiro: null,
@@ -425,10 +427,18 @@ export default function ConteudoPage() {
     setModalAula(a);
     setFa(
       a === "nova"
-        ? { titulo: "", descricao: "", fonte: "link", url: "", ficheiro: null }
+        ? {
+            titulo: "",
+            descricao: "",
+            modulo: aulas.at(-1)?.modulo ?? "",
+            fonte: "link",
+            url: "",
+            ficheiro: null,
+          }
         : {
             titulo: a.titulo,
             descricao: a.descricao ?? "",
+            modulo: a.modulo ?? "",
             fonte: a.tipo === "upload" ? "upload" : "link",
             url: a.url ?? "",
             ficheiro: null,
@@ -461,7 +471,12 @@ export default function ConteudoPage() {
         } else {
           fonte = {};
         }
-        const dados = { titulo, descricao: fa.descricao.trim() || null, ...fonte };
+        const dados = {
+          titulo,
+          descricao: fa.descricao.trim() || null,
+          modulo: fa.modulo.trim() || null,
+          ...fonte,
+        };
         if (editar) {
           await Aulas.atualizar(editar.id, dados);
           // Se trocou o ficheiro (ou passou para link), apaga o vídeo antigo.
@@ -788,7 +803,10 @@ export default function ConteudoPage() {
                     )}
                   </div>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] text-text-low">Aula {i + 1}</span>
+                    <span className="block truncate text-[11px] text-text-low">
+                      Aula {i + 1}
+                      {a.modulo ? ` · ${a.modulo}` : ""}
+                    </span>
                     <span className="line-clamp-2 text-sm font-medium leading-snug text-text-hi">
                       {a.titulo}
                     </span>
@@ -1008,6 +1026,22 @@ export default function ConteudoPage() {
               placeholder={`Aula ${aulas.length + 1}`}
               onChange={(e) => setFa({ ...fa, titulo: e.target.value })}
             />
+          </Field>
+          <Field
+            label="Módulo"
+            hint="Opcional. Aulas seguidas com o mesmo módulo aparecem agrupadas no curso."
+          >
+            <Input
+              value={fa.modulo}
+              list="modulos-do-curso"
+              placeholder="Ex.: Módulo 1 — Introdução"
+              onChange={(e) => setFa({ ...fa, modulo: e.target.value })}
+            />
+            <datalist id="modulos-do-curso">
+              {[...new Set(aulas.map((a) => a.modulo).filter(Boolean))].map((m) => (
+                <option key={m} value={m!} />
+              ))}
+            </datalist>
           </Field>
           <div>
             <p className="mb-1.5 text-sm font-medium text-text-hi">Vídeo</p>

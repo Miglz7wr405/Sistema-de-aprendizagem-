@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -547,44 +547,56 @@ export default function CursoPage() {
             <div className="mt-3 max-h-[60vh] space-y-1.5 overflow-y-auto pr-1">
               {aulas.map((a, i) => {
                 const thumb = miniaturaDoLink(a.url);
+                const novoModulo = a.modulo && a.modulo !== aulas[i - 1]?.modulo;
                 return (
-                  <button
-                    key={a.id}
-                    onClick={() => abrir(a)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition",
-                      a.id === ativa.id
-                        ? "border-accent bg-accent-soft"
-                        : "border-hairline hover:border-accent/50",
-                    )}
-                  >
-                    <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md bg-text-hi">
-                      {thumb ? (
-                        <img
-                          src={thumb}
-                          alt=""
-                          loading="lazy"
-                          className="h-full w-full object-cover"
-                          onError={(e) => (e.currentTarget.style.visibility = "hidden")}
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-white/60">
-                          <PlayCircle className="size-5" />
-                        </div>
-                      )}
-                      {feitas.has(a.id) && (
-                        <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-green-500 text-white">
-                          <CheckCircle2 className="size-3" />
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-text-low">Aula {i + 1}</p>
-                      <p className="line-clamp-2 text-sm font-medium leading-snug text-text-hi">
-                        {a.titulo}
+                  <Fragment key={a.id}>
+                    {novoModulo && (
+                      <p
+                        className={cn(
+                          "px-1 pb-0.5 text-xs font-semibold uppercase tracking-wide text-accent",
+                          i > 0 && "pt-3",
+                        )}
+                      >
+                        {a.modulo}
                       </p>
-                    </div>
-                  </button>
+                    )}
+                    <button
+                      onClick={() => abrir(a)}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition",
+                        a.id === ativa.id
+                          ? "border-accent bg-accent-soft"
+                          : "border-hairline hover:border-accent/50",
+                      )}
+                    >
+                      <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md bg-text-hi">
+                        {thumb ? (
+                          <img
+                            src={thumb}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                            onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center text-white/60">
+                            <PlayCircle className="size-5" />
+                          </div>
+                        )}
+                        {feitas.has(a.id) && (
+                          <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-green-500 text-white">
+                            <CheckCircle2 className="size-3" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium text-text-low">Aula {i + 1}</p>
+                        <p className="line-clamp-2 text-sm font-medium leading-snug text-text-hi">
+                          {a.titulo}
+                        </p>
+                      </div>
+                    </button>
+                  </Fragment>
                 );
               })}
             </div>
