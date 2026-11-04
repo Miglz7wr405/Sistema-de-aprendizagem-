@@ -213,6 +213,7 @@ function Leitor({ aula }: { aula: Aula }) {
   const leitor = leitorDoLink(aula.url ?? "");
   if (leitor.tipo === "iframe") {
     const ehDrive = Boolean(driveId(aula.url));
+    const ehVimeo = leitor.src.startsWith("https://player.vimeo.com/");
     const movel = ehDrive && (largura || window.innerWidth) < LARGURA_MOVEL;
     return (
       <div>
@@ -248,6 +249,15 @@ function Leitor({ aula }: { aula: Aula }) {
                   aria-hidden="true"
                   data-capa-drive
                   className="absolute right-0 top-0 h-14 w-16 rounded-bl-2xl bg-black"
+                  onContextMenu={semMenu}
+                />
+              )}
+              {ehVimeo && (
+                // No plano gratuito o Vimeo não deixa esconder "gosto", "ver mais tarde"
+                // e "partilhar" (coluna no canto superior direito): bloqueia os cliques.
+                <div
+                  aria-hidden="true"
+                  className="absolute right-0 top-0 h-44 w-16"
                   onContextMenu={semMenu}
                 />
               )}
