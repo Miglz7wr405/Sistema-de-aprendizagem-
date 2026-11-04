@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { GraduationCap } from "lucide-react";
+import { BookOpen, GraduationCap, Trophy } from "lucide-react";
 
 import { primeiroNome } from "@/lib/utils";
 import { useAuth } from "../auth";
-import { SeccaoCard } from "../components/Catalogo";
-import { Button, Carregando, EmptyState, Erro } from "../components/primitives";
+import { progressoDoCurso, SeccaoCard } from "../components/Catalogo";
+import { Button, Carregando, EmptyState, Erro, ProgressBar } from "../components/primitives";
 import { useCatalogo } from "../use-catalogo";
 
 export default function InicioPage() {
@@ -19,6 +19,15 @@ export default function InicioPage() {
     .map((s) => ({ seccao: s, cursos: cat.cursos.filter((c) => c.seccao_id === s.id) }))
     .filter((x) => x.cursos.length > 0);
 
+  const totalAulas = cat.aulas.length;
+  const feitas = new Set(cat.progresso.filter((p) => p.concluida).map((p) => p.aula_id));
+  const concluidas = cat.aulas.filter((a) => feitas.has(a.id)).length;
+  const pctGeral = totalAulas ? Math.round((concluidas / totalAulas) * 100) : 0;
+  const cursosFeitos = cat.cursos.filter((c) => {
+    const p = progressoDoCurso(cat, c.id);
+    return p.total > 0 && p.concluidas === p.total;
+  }).length;
+
   return (
     <div className="page-fade-in space-y-8">
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent via-accent-2 to-accent-3 p-6 text-white md:p-8">
@@ -32,6 +41,26 @@ export default function InicioPage() {
           <p className="mt-2 text-sm text-white/85">
             Escolhe uma área para veres os cursos e começares a aprender.
           </p>
+          <div className="mt-5 flex flex-wrap gap-2 text-sm">
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-1.5">
+              <GraduationCap className="size-4" /> {cat.cursos.length} cursos
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-1.5">
+              <BookOpen className="size-4" /> {concluidas}/{totalAulas} aulas vistas
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-1.5">
+              <Trophy className="size-4" /> {cursosFeitos} concluídos
+            </span>
+          </div>
+          {totalAulas > 0 && (
+            <div className="mt-4 max-w-sm">
+              <div className="mb-1 flex justify-between text-xs text-white/80">
+                <span>O teu progresso</span>
+                <span>{pctGeral}%</span>
+              </div>
+              <ProgressBar value={pctGeral} className="h-1.5 bg-white/25 [&>div]:bg-white" />
+            </div>
+          )}
         </div>
         <GraduationCap className="absolute -bottom-6 -right-6 size-44 text-white/10" />
       </section>
