@@ -29,7 +29,10 @@ export default function SeccaoPage() {
       />
     );
   }
-  const cursos = cat.cursos.filter((c) => c.seccao_id === id);
+  // Os cursos com mais corações primeiro; em empate, a ordem definida no admin.
+  const cursos = cat.cursos
+    .filter((c) => c.seccao_id === id)
+    .sort((a, b) => b.coracoes - a.coracoes || a.ordem - b.ordem);
 
   return (
     <div className="page-fade-in">

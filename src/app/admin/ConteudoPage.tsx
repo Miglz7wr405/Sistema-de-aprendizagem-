@@ -10,6 +10,7 @@ import {
   FileVideo,
   FolderInput,
   GripVertical,
+  Heart,
   HardDrive,
   Image,
   Link2,
@@ -196,8 +197,10 @@ type FormCurso = {
   publicado: boolean;
   seccao_id: string;
   capa_url: string;
+  coracoes: number;
 };
 type FormAula = {
+  posicao: string;
   titulo: string;
   descricao: string;
   modulo: string;
@@ -321,9 +324,11 @@ export default function ConteudoPage() {
     publicado: true,
     seccao_id: "",
     capa_url: "",
+    coracoes: 0,
   });
   const [modalAula, setModalAula] = useState<Aula | "nova" | null>(null);
   const [fa, setFa] = useState<FormAula>({
+    posicao: "",
     titulo: "",
     descricao: "",
     modulo: "",
@@ -455,6 +460,7 @@ export default function ConteudoPage() {
             publicado: true,
             seccao_id: seccaoId ?? "",
             capa_url: "",
+            coracoes: 0,
           }
         : {
             titulo: c.titulo,
@@ -464,6 +470,7 @@ export default function ConteudoPage() {
             publicado: c.publicado,
             seccao_id: c.seccao_id,
             capa_url: c.capa_url ?? "",
+            coracoes: c.coracoes ?? 0,
           },
     );
   }
@@ -478,6 +485,7 @@ export default function ConteudoPage() {
       publicado: fc.publicado,
       seccao_id: fc.seccao_id,
       capa_url: fc.capa_url.trim() || null,
+      coracoes: fc.coracoes,
     };
     const ok = await tentar(async () => {
       if (modalCurso === "novo") {
@@ -509,6 +517,7 @@ export default function ConteudoPage() {
     setFa(
       a === "nova"
         ? {
+            posicao: String(aulas.length + 1),
             titulo: "",
             descricao: "",
             modulo: aulas.at(-1)?.modulo ?? "",
@@ -517,6 +526,7 @@ export default function ConteudoPage() {
             ficheiro: null,
           }
         : {
+            posicao: String(aulas.findIndex((x) => x.id === a.id) + 1),
             titulo: a.titulo,
             descricao: a.descricao ?? "",
             modulo: a.modulo ?? "",
@@ -558,8 +568,15 @@ export default function ConteudoPage() {
           modulo: fa.modulo.trim() || null,
           ...fonte,
         };
+        const outras = editar ? aulas.filter((x) => x.id !== editar.id) : aulas;
+        const pedida = parseInt(fa.posicao, 10);
+        const indice = Number.isNaN(pedida)
+          ? outras.length
+          : Math.min(Math.max(pedida, 1), outras.length + 1) - 1;
+        let guardada: Aula;
         if (editar) {
           await Aulas.atualizar(editar.id, dados);
+          guardada = editar;
           // Se trocou o ficheiro (ou passou para link), apaga o vídeo antigo.
           if (
             editar.storage_path &&
@@ -569,8 +586,11 @@ export default function ConteudoPage() {
             await Ficheiros.apagar(editar.storage_path);
           }
         } else {
-          await Aulas.criar({ ...dados, curso_id: curso.id, ordem: aulas.length });
+          guardada = await Aulas.criar({ ...dados, curso_id: curso.id, ordem: aulas.length });
         }
+        const nova = [...outras];
+        nova.splice(indice, 0, guardada);
+        await Aulas.reordenar(nova);
       },
       editar ? "Aula guardada" : "Aula adicionada",
     );
@@ -1054,6 +1074,32 @@ export default function ConteudoPage() {
               onChange={(e) => setFc({ ...fc, descricao: e.target.value })}
             />
           </Field>
+          <Field
+            label="Corações"
+            hint="A tua classificação do curso. Na secção, os cursos com mais corações aparecem primeiro."
+          >
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-label={`${n} ${n === 1 ? "coração" : "corações"}`}
+                  onClick={() =>
+                    setFc((atual) => ({ ...atual, coracoes: atual.coracoes === n ? 0 : n }))
+                  }
+                  className="grid size-10 place-items-center rounded-lg hover:bg-red-50"
+                >
+                  <Heart
+                    className={cn(
+                      "size-6",
+                      n <= fc.coracoes ? "fill-red-500 text-red-500" : "text-text-low",
+                    )}
+                  />
+                </button>
+              ))}
+              <span className="ml-2 text-sm text-text-low">{fc.coracoes}/5</span>
+            </div>
+          </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Nível">
               <Select
@@ -1118,13 +1164,26 @@ export default function ConteudoPage() {
         size="lg"
       >
         <div className="space-y-4">
-          <Field label="Título da aula">
-            <Input
-              value={fa.titulo}
-              placeholder={`Aula ${aulas.length + 1}`}
-              onChange={(e) => setFa({ ...fa, titulo: e.target.value })}
-            />
-          </Field>
+          <div className="grid grid-cols-[110px_1fr] gap-3">
+            <Field label="Posição">
+              <Input
+                semVoz
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={modalAula === "nova" ? aulas.length + 1 : aulas.length}
+                value={fa.posicao}
+                onChange={(e) => setFa({ ...fa, posicao: e.target.value })}
+              />
+            </Field>
+            <Field label="Título da aula">
+              <Input
+                value={fa.titulo}
+                placeholder={`Aula ${aulas.length + 1}`}
+                onChange={(e) => setFa({ ...fa, titulo: e.target.value })}
+              />
+            </Field>
+          </div>
           <Field
             label="Módulo"
             hint="Opcional. Aulas seguidas com o mesmo módulo aparecem agrupadas no curso."

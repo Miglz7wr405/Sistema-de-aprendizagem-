@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CheckCircle2, EyeOff, PlayCircle } from "lucide-react";
+import { CheckCircle2, EyeOff, Heart, PlayCircle } from "lucide-react";
 
 import type { Aula, Curso, Progresso, Seccao } from "@/lib/types";
 import { NIVEL_LABEL, NIVEL_STYLE } from "@/lib/types";
@@ -79,6 +79,17 @@ export function CursoCard({ cat, curso }: { cat: Catalogo; curso: Curso }) {
       <div className="flex flex-1 flex-col p-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge className={NIVEL_STYLE[curso.nivel]}>{NIVEL_LABEL[curso.nivel]}</Badge>
+          {curso.coracoes > 0 && (
+            <span
+              className="inline-flex items-center gap-0.5"
+              aria-label={`${curso.coracoes} de 5 corações`}
+              title={`${curso.coracoes} de 5 corações`}
+            >
+              {Array.from({ length: curso.coracoes }, (_, i) => (
+                <Heart key={i} className="size-3.5 fill-red-500 text-red-500" />
+              ))}
+            </span>
+          )}
           <span className="text-xs text-text-low">
             {total} {total === 1 ? "aula" : "aulas"}
             {curso.duracao ? ` · ${curso.duracao}` : ""}

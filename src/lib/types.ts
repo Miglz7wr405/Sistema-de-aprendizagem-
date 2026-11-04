@@ -39,6 +39,7 @@ export type Curso = {
   nivel: Nivel;
   duracao: string | null;
   capa_url: string | null;
+  coracoes: number;
   ordem: number;
   publicado: boolean;
   created_at: string;
