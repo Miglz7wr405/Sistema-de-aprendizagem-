@@ -52,6 +52,7 @@ export type Aula = {
   url: string | null;
   storage_path: string | null;
   duracao: string | null;
+  modulo: string | null;
   ordem: number;
   created_at: string;
 };
