@@ -104,6 +104,65 @@ export function CursoCard({ cat, curso }: { cat: Catalogo; curso: Curso }) {
   );
 }
 
+export function capaDaSeccao(cat: Catalogo, seccao: Seccao, cursos: Curso[]) {
+  if (seccao.capa_url) return seccao.capa_url;
+  for (const c of cursos) {
+    const capa = capaDoCurso(cat, c);
+    if (capa) return capa;
+  }
+  return null;
+}
+
+export function SeccaoCard({
+  cat,
+  seccao,
+  cursos,
+}: {
+  cat: Catalogo;
+  seccao: Seccao;
+  cursos: Curso[];
+}) {
+  const capa = capaDaSeccao(cat, seccao, cursos);
+  const nAulas = cursos.reduce((n, c) => n + aulasDoCurso(cat, c.id).length, 0);
+  return (
+    <Link
+      to={`/seccao/${seccao.id}`}
+      className="app-card app-card-hover group flex flex-col overflow-hidden"
+    >
+      <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-accent to-accent-2">
+        {capa && (
+          <img
+            src={capa}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+        <span className="absolute left-3 top-3 grid size-11 place-items-center rounded-xl bg-white/90 text-2xl shadow">
+          {seccao.icone || "📚"}
+        </span>
+        {seccao.visibilidade === "privada" && (
+          <span className="absolute right-3 top-3">
+            <BadgePrivado />
+          </span>
+        )}
+        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+          <h3 className="font-display text-lg font-bold leading-snug">{seccao.titulo}</h3>
+          <p className="mt-0.5 text-xs text-white/80">
+            {cursos.length} {cursos.length === 1 ? "curso" : "cursos"} · {nAulas}{" "}
+            {nAulas === 1 ? "aula" : "aulas"}
+          </p>
+        </div>
+      </div>
+      {seccao.descricao && (
+        <p className="line-clamp-2 px-4 py-3 text-sm text-text-mid">{seccao.descricao}</p>
+      )}
+    </Link>
+  );
+}
+
 export function CabecalhoSeccao({
   seccao,
   nCursos,
