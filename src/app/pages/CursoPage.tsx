@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,10 +11,12 @@ import {
   Loader2,
   MessageCircleQuestion,
   Pencil,
+  Play,
   PlayCircle,
   Reply,
   Send,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,12 +62,86 @@ function MarcaDeAgua() {
   );
 }
 
-// Abaixo desta largura o player do Drive passa ao layout de telemóvel e corta o vídeo
-// (só se vê o centro). Desenhamo-lo com esta largura e reduzimos com CSS.
-const LARGURA_MIN_DRIVE = 640;
-// No layout de telemóvel o Drive põe a fila de controlos (pausa, ±10s, tempo) abaixo
-// do vídeo 16:9; esta altura extra deixa-a dentro da caixa.
-const ALTURA_DRIVE_MOVEL = 460;
+// Abaixo desta largura o player do Drive usa o layout de telemóvel, que foi feito para
+// ocupar o ecrã todo; numa caixa 16:9 fica cortado. Aí abrimo-lo em ecrã inteiro.
+const LARGURA_MOVEL = 640;
+
+function CapaDrive({ aula }: { aula: Aula }) {
+  const capa = miniaturaDoLink(aula.url);
+  return (
+    <div className="absolute inset-0 grid place-items-center">
+      {capa && (
+        <img
+          src={capa}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-70"
+          onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+        />
+      )}
+      <span className="relative grid size-16 place-items-center rounded-full bg-white/90 text-black shadow-lg">
+        <Play className="size-7 translate-x-0.5 fill-current" />
+      </span>
+      <span className="absolute inset-x-0 bottom-3 text-center text-sm font-medium text-white drop-shadow">
+        Toca para assistir
+      </span>
+    </div>
+  );
+}
+
+function EcraInteiroDrive({
+  src,
+  titulo,
+  onFechar,
+}: {
+  src: string;
+  titulo: string;
+  onFechar: () => void;
+}) {
+  const fecharRef = useRef(onFechar);
+  fecharRef.current = onFechar;
+
+  useEffect(() => {
+    const overflowAntes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    // Uma entrada no histórico para o botão "voltar" do telemóvel fechar o vídeo.
+    history.pushState({ leitorDrive: true }, "");
+    const aoVoltar = () => fecharRef.current();
+    window.addEventListener("popstate", aoVoltar);
+    return () => {
+      document.body.style.overflow = overflowAntes;
+      window.removeEventListener("popstate", aoVoltar);
+    };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex h-[100dvh] flex-col bg-black"
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <div className="flex h-12 shrink-0 items-center gap-2 px-2 text-white">
+        <button
+          onClick={() => history.back()}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/10 px-3 text-sm font-medium"
+        >
+          <X className="size-4" /> Fechar
+        </button>
+        <span className="min-w-0 truncate text-sm text-white/80">{titulo}</span>
+      </div>
+      <div className="relative min-h-0 flex-1 select-none">
+        <iframe
+          src={src}
+          title={titulo}
+          className="absolute inset-0 h-full w-full"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allowFullScreen
+        />
+        <div aria-hidden="true" className="absolute right-0 top-0 h-14 w-16 bg-black" />
+        <MarcaDeAgua />
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 function useLargura<T extends HTMLElement>() {
   const [el, setEl] = useState<T | null>(null);
@@ -83,6 +160,9 @@ function Leitor({ aula }: { aula: Aula }) {
   const [erro, setErro] = useState(false);
   const estadoDrive = useEstadoDrive(aula.tipo === "upload" ? null : aula.url);
   const [refCaixa, largura] = useLargura<HTMLDivElement>();
+  const [ecraInteiro, setEcraInteiro] = useState(false);
+
+  useEffect(() => setEcraInteiro(false), [aula.id]);
 
   useEffect(() => {
     const bloquear = (e: KeyboardEvent) => {
@@ -133,48 +213,55 @@ function Leitor({ aula }: { aula: Aula }) {
   const leitor = leitorDoLink(aula.url ?? "");
   if (leitor.tipo === "iframe") {
     const ehDrive = Boolean(driveId(aula.url));
-    const escala =
-      ehDrive && largura > 0 && largura < LARGURA_MIN_DRIVE ? largura / LARGURA_MIN_DRIVE : 1;
+    const movel = ehDrive && (largura || window.innerWidth) < LARGURA_MOVEL;
     return (
       <div>
         <div
           ref={refCaixa}
           className={caixa}
-          style={{
-            aspectRatio: escala < 1 ? `${LARGURA_MIN_DRIVE} / ${ALTURA_DRIVE_MOVEL}` : "16 / 9",
-          }}
+          style={{ aspectRatio: "16 / 9" }}
           onContextMenu={semMenu}
         >
-          {/* O player do Drive não reproduz dentro de um iframe com sandbox. */}
-          <iframe
-            key={aula.id}
-            src={leitor.src}
-            title={aula.titulo}
-            className={escala < 1 ? "absolute left-0 top-0" : "absolute inset-0 h-full w-full"}
-            style={
-              escala < 1
-                ? {
-                    width: LARGURA_MIN_DRIVE,
-                    height: ALTURA_DRIVE_MOVEL,
-                    transform: `scale(${escala})`,
-                    transformOrigin: "top left",
-                  }
-                : undefined
-            }
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            allowFullScreen
-          />
-          {ehDrive && (
-            // Esconde e bloqueia o botão "abrir noutra janela" do Drive.
-            <div
-              aria-hidden="true"
-              data-capa-drive
-              className="absolute right-0 top-0 h-14 w-16 rounded-bl-2xl bg-black"
-              onContextMenu={semMenu}
-            />
+          {movel ? (
+            <button
+              type="button"
+              aria-label={`Assistir ${aula.titulo}`}
+              onClick={() => setEcraInteiro(true)}
+              className="absolute inset-0"
+            >
+              <CapaDrive aula={aula} />
+            </button>
+          ) : (
+            <>
+              {/* O player do Drive não reproduz dentro de um iframe com sandbox. */}
+              <iframe
+                key={aula.id}
+                src={leitor.src}
+                title={aula.titulo}
+                className="absolute inset-0 h-full w-full"
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                allowFullScreen
+              />
+              {ehDrive && (
+                // Esconde e bloqueia o botão "abrir noutra janela" do Drive.
+                <div
+                  aria-hidden="true"
+                  data-capa-drive
+                  className="absolute right-0 top-0 h-14 w-16 rounded-bl-2xl bg-black"
+                  onContextMenu={semMenu}
+                />
+              )}
+              <MarcaDeAgua />
+            </>
           )}
-          <MarcaDeAgua />
         </div>
+        {movel && ecraInteiro && (
+          <EcraInteiroDrive
+            src={leitor.src}
+            titulo={aula.titulo}
+            onFechar={() => setEcraInteiro(false)}
+          />
+        )}
         {estadoDrive === "talvez_privado" && <AvisoDrivePrivado className="mt-3" />}
       </div>
     );
