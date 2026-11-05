@@ -39,6 +39,7 @@ export function BotaoGerarDescricoes({
   const [titulos, setTitulos] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [nTranscricoes, setNTranscricoes] = useState(0);
 
   const semDescricao = aulas.filter((a) => !a.descricao?.trim()).length;
   const comDescricao = aulas.length - semDescricao;
@@ -58,11 +59,12 @@ export function BotaoGerarDescricoes({
     setEstado("a-gerar");
     setErro(null);
     try {
-      const resp = await chamarFuncao<{ ok: boolean; descricoes: DescricaoGerada[] }>(
+      const resp = await chamarFuncao<{ ok: boolean; descricoes: DescricaoGerada[]; transcricoes_usadas?: number }>(
         "gerar-descricoes",
         { curso_id: curso.id, sobrescrever },
       );
       setResultados(resp.descricoes);
+      setNTranscricoes(resp.transcricoes_usadas ?? 0);
       setSelecionados(new Set(resp.descricoes.map((d) => d.aula_id)));
       const t: Record<string, string> = {};
       const tit: Record<string, string> = {};
@@ -202,13 +204,19 @@ export function BotaoGerarDescricoes({
         {estado === "a-gerar" && (
           <div className="flex flex-col items-center gap-3 py-12 text-text-low">
             <Loader2 className="size-6 animate-spin" />
-            <p className="text-sm">A gerar títulos e descrições com IA...</p>
-            <p className="text-xs">Pode demorar até 30 segundos.</p>
+            <p className="text-sm">A ler as aulas e gerar títulos e descrições...</p>
+            <p className="text-xs">A IA lê um trecho de cada vídeo antes de gerar. Pode demorar até 1 minuto.</p>
           </div>
         )}
 
         {estado === "rever" && (
           <div className="space-y-3">
+            {nTranscricoes > 0 && (
+              <div className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+                A IA leu a transcrição de {nTranscricoes} vídeo{nTranscricoes !== 1 ? "s" : ""} para gerar títulos mais fiéis ao conteúdo.
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <button
                 onClick={selecionarTodos}
