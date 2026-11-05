@@ -218,6 +218,26 @@ async function buscarTranscricaoDrive(
   }
 }
 
+async function escolherModelo(key: string): Promise<string> {
+  try {
+    const r = await fetch("https://api.groq.com/openai/v1/models", {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const j = await r.json();
+    const ids: string[] = (j.data ?? [])
+      .map((m: { id: string }) => m.id)
+      .filter((id: string) => !/whisper|guard|tts|playai|embed|prompt|distil/i.test(id));
+    for (const p of ["llama-3.3-70b", "gpt-oss-120b", "70b", "llama-4", "gpt-oss", "llama"]) {
+      const f = ids.find((id) => id.includes(p));
+      if (f) return f;
+    }
+    if (ids[0]) return ids[0];
+  } catch {
+    /* usa o valor por omissão */
+  }
+  return "llama-3.1-8b-instant";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ erro: "Método não permitido" }, 405);
@@ -377,48 +397,15 @@ Deno.serve(async (req) => {
   const nTranscricoes = Object.keys(transcricoes).length;
 
   // Construir o prompt
-  const listaAulas = (aulas as AulaRow[])
-    .map((a, i) => {
-      let linha = `${i + 1}. [${a.id}] «${a.titulo}»`;
-      if (a.modulo) linha += ` (Módulo: ${a.modulo})`;
-      if (extras[a.id]) linha += ` — Vídeo original: «${extras[a.id]}»`;
-      if (transcricoes[a.id])
-        linha += `\n   Transcrição (início do vídeo): «${transcricoes[a.id]}»`;
-      return linha;
-    })
-    .join("\n");
+  const linhasAulas = (aulas as AulaRow[]).map((a, i) => {
+    let linha = `${i + 1}. [${a.id}] «${a.titulo}»`;
+    if (a.modulo) linha += ` (Módulo: ${a.modulo})`;
+    if (extras[a.id]) linha += ` — Vídeo original: «${extras[a.id]}»`;
+    if (transcricoes[a.id]) linha += `\n   Transcrição (início do vídeo): «${transcricoes[a.id]}»`;
+    return linha;
+  });
 
-  const prompt = `Gera títulos e descrições para as aulas deste curso:
-
-Secção: ${seccao?.titulo ?? "—"}
-Curso: ${curso.titulo} (Nível: ${curso.nivel ?? "—"})
-Descrição do curso: ${curso.descricao || "sem descrição"}
-
-Aulas (por ordem):
-${listaAulas}
-
-Para cada aula, gera:
-- Um título claro e curto (máximo 60 caracteres), que reflita fielmente o conteúdo real da aula. Usa a transcrição quando disponível para entender o que se ensina. Não inventes — o título deve descrever o que a aula realmente aborda.
-- Uma descrição com 2 a 4 frases explicando o que o aluno vai aprender, baseada no conteúdo real.
-
-Responde APENAS com um array JSON, sem markdown, no formato:
-[{"aula_id": "...", "titulo": "...", "descricao": "..."}]`;
-
-  try {
-    const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 4096,
-        temperature: 0.5,
-        messages: [
-          {
-            role: "system",
-            content: `És um assistente educativo que escreve títulos e descrições de aulas para uma academia online. Escreves em português europeu, de forma clara e motivadora.
+  const sistema = `És um assistente educativo que escreve títulos e descrições de aulas para uma academia online. Escreves em português europeu, de forma clara e motivadora.
 
 REGRAS PARA TÍTULOS:
 - Baseia os títulos no conteúdo real da aula. Quando tens a transcrição do início do vídeo, usa-a para perceber exatamente o que se ensina.
@@ -429,54 +416,67 @@ REGRAS PARA TÍTULOS:
 REGRAS PARA DESCRIÇÕES:
 - 2 a 4 frases explicando o que o aluno vai aprender.
 - Baseadas no conteúdo real (transcrição quando disponível).
-- Claras e motivadoras, sem exageros.`,
-          },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
+- Claras e motivadoras, sem exageros.`;
 
-    if (!resp.ok) {
-      const body = await resp.text();
-      console.error("Groq API:", resp.status, body);
-      if (resp.status === 401) {
-        return json(
-          {
-            erro: "Chave Groq inválida. Verifica o GROQ_API_KEY nos Secrets.",
-          },
-          401,
-        );
+  const modelo = await escolherModelo(apiKey);
+  const gerados: Array<{ aula_id: string; titulo?: string; descricao: string }> = [];
+  const LOTE = 15;
+
+  try {
+    for (let i = 0; i < linhasAulas.length; i += LOTE) {
+      const prompt = `Gera títulos e descrições para estas aulas do curso:
+
+Secção: ${seccao?.titulo ?? "—"}
+Curso: ${curso.titulo} (Nível: ${curso.nivel ?? "—"})
+Descrição do curso: ${curso.descricao || "sem descrição"}
+
+Aulas:
+${linhasAulas.slice(i, i + LOTE).join("\n")}
+
+Para cada aula, gera:
+- Um título claro e curto (máximo 60 caracteres) que reflita fielmente o conteúdo real. Usa a transcrição quando disponível. Não inventes.
+- Uma descrição com 2 a 4 frases sobre o que o aluno vai aprender.
+
+Responde APENAS com um array JSON, sem markdown, no formato:
+[{"aula_id": "...", "titulo": "...", "descricao": "..."}]`;
+
+      const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          model: modelo,
+          max_tokens: 4096,
+          temperature: 0.5,
+          messages: [
+            { role: "system", content: sistema },
+            { role: "user", content: prompt },
+          ],
+        }),
+      });
+
+      if (!resp.ok) {
+        const body = await resp.text();
+        console.error("Groq API:", resp.status, modelo, body);
+        if (resp.status === 401) return json({ erro: "Chave Groq inválida. Verifica-a em Administração > Chaves de API." }, 401);
+        if (resp.status === 429) return json({ erro: "Limite grátis do Groq atingido. Espera 1 minuto e tenta outra vez." }, 429);
+        return json({ erro: `Erro ao comunicar com a IA (${resp.status}).` }, 502);
       }
-      if (resp.status === 429) {
-        return json(
-          { erro: "Demasiados pedidos à IA. Tenta novamente daqui a pouco." },
-          429,
-        );
+
+      const data = await resp.json();
+      const texto = data.choices?.[0]?.message?.content ?? "";
+      const match = texto.match(/\[[\s\S]*\]/);
+      if (!match) {
+        console.error("Resposta inesperada da IA:", texto);
+        return json({ erro: "A IA devolveu uma resposta inesperada. Tenta outra vez." }, 502);
       }
-      return json({ erro: "Erro ao comunicar com a IA." }, 502);
+      try {
+        gerados.push(...JSON.parse(match[0]));
+      } catch {
+        return json({ erro: "A IA devolveu uma resposta inválida. Tenta outra vez." }, 502);
+      }
     }
 
-    const data = await resp.json();
-    const texto = data.choices?.[0]?.message?.content ?? "";
-
-    const match = texto.match(/\[[\s\S]*\]/);
-    if (!match) {
-      console.error("Resposta inesperada da IA:", texto);
-      return json(
-        { erro: "A IA devolveu uma resposta inesperada. Tenta outra vez." },
-        502,
-      );
-    }
-
-    const gerados: Array<{
-      aula_id: string;
-      titulo?: string;
-      descricao: string;
-    }> = JSON.parse(match[0]);
-
-    const aulaMap = new Map(
-      (aulas as AulaRow[]).map((a) => [a.id, a.titulo]),
-    );
+    const aulaMap = new Map((aulas as AulaRow[]).map((a) => [a.id, a.titulo]));
     const resultado = gerados
       .filter((d) => d.aula_id && d.descricao && aulaMap.has(d.aula_id))
       .map((d) => ({
@@ -486,11 +486,7 @@ REGRAS PARA DESCRIÇÕES:
         descricao_gerada: d.descricao.trim(),
       }));
 
-    return json({
-      ok: true,
-      descricoes: resultado,
-      transcricoes_usadas: nTranscricoes,
-    });
+    return json({ ok: true, descricoes: resultado, transcricoes_usadas: nTranscricoes });
   } catch (e) {
     console.error("gerar-descricoes:", e);
     return json({ erro: "Erro inesperado ao gerar descrições." }, 500);
