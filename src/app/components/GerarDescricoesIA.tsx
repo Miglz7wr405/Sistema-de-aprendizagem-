@@ -1,23 +1,39 @@
-import { useState } from "react";
-import { Check, Loader2, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, Loader2, Sparkles, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { Aulas } from "@/lib/db";
 import type { Aula, Curso, Seccao } from "@/lib/types";
 import { chamarFuncao } from "@/lib/supabase";
 import { carregarGis, obterTokenOAuth } from "@/lib/google-picker";
 import { driveId } from "@/lib/video";
-import { Modal, Textarea } from "./Modal";
+import { Modal } from "./Modal";
 import { Button } from "./primitives";
 
-type DescricaoGerada = {
-  aula_id: string;
-  titulo_original: string;
-  titulo_gerado: string;
-  descricao_gerada: string;
+type AulaAlvo = {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  url: string | null;
+  modulo: string | null;
 };
 
-type Estado = "configurar" | "a-gerar" | "rever";
+type Linha = {
+  id: string;
+  original: string;
+  estado: "feito" | "falhou";
+  titulo?: string;
+  motivo?: string;
+};
+
+const MOTIVOS: Record<string, string> = {
+  sem_conteudo: "não foi possível ler o vídeo",
+  permissao: "sem permissão para ler o vídeo no Drive",
+  audio: "o vídeo não deu para transcrever",
+  limite: "limite da IA atingido",
+  resposta: "a IA não respondeu em condições",
+};
+
+const MB = 1024 * 1024;
 
 export function BotaoGerarDescricoes({
   curso,
@@ -33,140 +49,137 @@ export function BotaoGerarDescricoes({
   disabled?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
-  const [estado, setEstado] = useState<Estado>("configurar");
+  const [estado, setEstado] = useState<"configurar" | "a-correr" | "fim">("configurar");
   const [sobrescrever, setSobrescrever] = useState(false);
-  const [resultados, setResultados] = useState<DescricaoGerada[]>([]);
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const [textos, setTextos] = useState<Record<string, string>>({});
-  const [titulos, setTitulos] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [nTranscricoes, setNTranscricoes] = useState(0);
-  const [ignoradas, setIgnoradas] = useState(0);
-  const [progresso, setProgresso] = useState("");
+  const [linhas, setLinhas] = useState<Linha[]>([]);
+  const [feitas, setFeitas] = useState(0);
+  const [total, setTotal] = useState(0);
+  const parar = useRef(false);
 
   const semDescricao = aulas.filter((a) => !a.descricao?.trim()).length;
   const comDescricao = aulas.length - semDescricao;
+  const aGerar = sobrescrever ? aulas.length : semDescricao;
 
   function abrir() {
     setAberto(true);
     setEstado("configurar");
     setSobrescrever(false);
-    setResultados([]);
-    setSelecionados(new Set());
-    setTextos({});
-    setTitulos({});
     setErro(null);
+    setLinhas([]);
+    setFeitas(0);
+    setTotal(0);
+    parar.current = false;
     carregarGis().catch(() => {});
   }
 
-  async function gerar() {
-    setEstado("a-gerar");
+  async function trechoDoDrive(url: string, token: string): Promise<Blob | "permissao" | null> {
+    const id = driveId(url);
+    if (!id) return null;
+    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, {
+      headers: { Authorization: `Bearer ${token}`, Range: `bytes=0-${6 * MB - 1}` },
+    });
+    if (r.status === 403 || r.status === 401) return "permissao";
+    if (!r.ok && r.status !== 206) return null;
+    const b = await r.blob();
+    return b.size > 20000 ? b : null;
+  }
+
+  async function correr() {
+    setEstado("a-correr");
     setErro(null);
-    setProgresso("");
+    setLinhas([]);
+    setFeitas(0);
+    parar.current = false;
+
     try {
-      const transcricoes: Record<string, string> = {};
-      const alvo = aulas.filter(
-        (a) => (sobrescrever || !a.descricao?.trim()) && a.url && driveId(a.url),
-      );
-      if (alvo.length > 0) {
-        const token = await obterTokenOAuth();
-        const fila = [...alvo];
-        let feitas = 0;
-        const trabalhador = async () => {
-          while (fila.length > 0) {
-            const a = fila.shift()!;
-            try {
-              const r = await fetch(
-                `https://www.googleapis.com/drive/v3/files/${driveId(a.url!)}?alt=media`,
-                { headers: { Authorization: `Bearer ${token}`, Range: "bytes=0-3145727" } },
+      const lista = await chamarFuncao<{ aulas: AulaAlvo[] }>("gerar-descricoes", {
+        acao: "listar",
+        curso_id: curso.id,
+        sobrescrever,
+      });
+      const alvo = lista.aulas;
+      setTotal(alvo.length);
+      if (alvo.length === 0) {
+        setErro("Não há aulas para tratar. Liga 'Sobrescrever' para refazer as que já têm descrição.");
+        setEstado("configurar");
+        return;
+      }
+
+      let token: string | null = null;
+      if (alvo.some((a) => a.url && driveId(a.url))) {
+        token = await obterTokenOAuth();
+      }
+
+      let semPermissao = 0;
+      for (const a of alvo) {
+        if (parar.current) break;
+
+        let transcricao: string | undefined;
+        let motivoLeitura: string | undefined;
+
+        if (token && a.url && driveId(a.url)) {
+          try {
+            const trecho = await trechoDoDrive(a.url, token);
+            if (trecho === "permissao") {
+              motivoLeitura = "permissao";
+              semPermissao += 1;
+            } else if (trecho) {
+              const form = new FormData();
+              form.append("ficheiro", trecho, "trecho.mp4");
+              const t = await chamarFuncao<{ ok: boolean; texto?: string; motivo?: string }>(
+                "gerar-descricoes",
+                form,
               );
-              if (r.ok) {
-                const form = new FormData();
-                form.append("ficheiro", await r.blob(), "trecho.mp4");
-                const t = await chamarFuncao<{ texto?: string | null }>("gerar-descricoes", form);
-                if (t.texto) transcricoes[a.id] = t.texto;
-              }
-            } catch {
-              /* esta aula fica sem transcrição */
+              if (t.ok && t.texto) transcricao = t.texto;
+              else motivoLeitura = t.motivo ?? "audio";
             }
-            feitas += 1;
-            setProgresso(`${feitas} de ${alvo.length} vídeos lidos`);
+          } catch {
+            motivoLeitura = "audio";
           }
-        };
-        await Promise.all([trabalhador(), trabalhador()]);
+        }
+
+        try {
+          const r = await chamarFuncao<{ ok: boolean; titulo?: string; motivo?: string }>(
+            "gerar-descricoes",
+            { acao: "uma", aula_id: a.id, transcricao },
+          );
+          setLinhas((prev) => [
+            ...prev,
+            r.ok && r.titulo
+              ? { id: a.id, original: a.titulo, estado: "feito", titulo: r.titulo }
+              : { id: a.id, original: a.titulo, estado: "falhou", motivo: motivoLeitura ?? r.motivo },
+          ]);
+        } catch (e) {
+          setLinhas((prev) => [
+            ...prev,
+            {
+              id: a.id,
+              original: a.titulo,
+              estado: "falhou",
+              motivo: e instanceof Error ? e.message : undefined,
+            },
+          ]);
+        }
+
+        setFeitas((n) => n + 1);
       }
-      setProgresso("A gerar títulos e descrições...");
-      const resp = await chamarFuncao<{
-        ok: boolean;
-        descricoes: DescricaoGerada[];
-        transcricoes_usadas?: number;
-        ignoradas?: number;
-      }>("gerar-descricoes", { curso_id: curso.id, sobrescrever, transcricoes });
-      setResultados(resp.descricoes);
-      setIgnoradas(resp.ignoradas ?? 0);
-      setNTranscricoes(resp.transcricoes_usadas ?? 0);
-      setSelecionados(new Set(resp.descricoes.map((d) => d.aula_id)));
-      const t: Record<string, string> = {};
-      const tit: Record<string, string> = {};
-      for (const d of resp.descricoes) {
-        t[d.aula_id] = d.descricao_gerada;
-        tit[d.aula_id] = d.titulo_gerado;
+
+      if (semPermissao > 0 && semPermissao === alvo.length) {
+        setErro(
+          "O Google não deixou ler nenhum vídeo. Estes ficheiros têm o download bloqueado, por isso só a conta dona do Drive os consegue ler. Entra com essa conta e tenta outra vez.",
+        );
       }
-      setTextos(t);
-      setTitulos(tit);
-      setEstado("rever");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro ao gerar descrições.";
-      setErro(msg);
+      setEstado("fim");
+      onAplicar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao gerar.");
       setEstado("configurar");
     }
   }
 
-  function alternar(id: string) {
-    setSelecionados((prev) => {
-      const novo = new Set(prev);
-      if (novo.has(id)) novo.delete(id);
-      else novo.add(id);
-      return novo;
-    });
-  }
-
-  function selecionarTodos() {
-    if (selecionados.size === resultados.length) setSelecionados(new Set());
-    else setSelecionados(new Set(resultados.map((d) => d.aula_id)));
-  }
-
-  async function aplicar() {
-    const escolhidos = resultados.filter((d) => selecionados.has(d.aula_id));
-    if (escolhidos.length === 0) return toast.error("Seleciona pelo menos uma aula.");
-    setBusy(true);
-    try {
-      const results = await Promise.allSettled(
-        escolhidos.map((d) =>
-          Aulas.atualizar(d.aula_id, {
-            titulo: titulos[d.aula_id] ?? d.titulo_gerado,
-            descricao: textos[d.aula_id] ?? d.descricao_gerada,
-          }),
-        ),
-      );
-      const ok = results.filter((r) => r.status === "fulfilled").length;
-      const falhou = results.length - ok;
-      if (falhou > 0) {
-        toast.error(`${ok} aula${ok !== 1 ? "s" : ""} atualizada${ok !== 1 ? "s" : ""}, ${falhou} falha${falhou !== 1 ? "ram" : "ou"}.`);
-      } else {
-        toast.success(`${ok} aula${ok !== 1 ? "s" : ""} atualizada${ok !== 1 ? "s" : ""} com título e descrição.`);
-      }
-      setAberto(false);
-      onAplicar();
-    } catch {
-      toast.error("Erro ao guardar alterações.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const nSel = selecionados.size;
+  const okN = linhas.filter((l) => l.estado === "feito").length;
+  const falhouN = linhas.length - okN;
 
   return (
     <>
@@ -175,7 +188,6 @@ export function BotaoGerarDescricoes({
         className="h-10 w-full justify-center border-accent text-accent"
         onClick={abrir}
         disabled={disabled}
-        title="Gerar títulos e descrições com IA"
       >
         <Sparkles className="size-4" />
         Gerar títulos e descrições com IA
@@ -183,15 +195,14 @@ export function BotaoGerarDescricoes({
 
       <Modal
         open={aberto}
-        onClose={() => estado !== "a-gerar" && !busy && setAberto(false)}
+        onClose={() => estado !== "a-correr" && setAberto(false)}
         title="Gerar títulos e descrições com IA"
         size="lg"
       >
         {estado === "configurar" && (
           <div className="space-y-4">
-            {erro && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
-            )}
+            {erro && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>}
+
             <div className="rounded-lg bg-bg-base p-4 text-sm">
               <p className="text-text-hi">
                 <strong>{curso.titulo}</strong>
@@ -199,156 +210,102 @@ export function BotaoGerarDescricoes({
               </p>
               <p className="mt-2 text-text-mid">
                 {aulas.length} aula{aulas.length !== 1 ? "s" : ""} no total
-                {semDescricao > 0 && (
-                  <span className="text-amber-600"> · {semDescricao} sem descrição</span>
-                )}
-                {comDescricao > 0 && (
-                  <span className="text-green-600"> · {comDescricao} já com descrição</span>
-                )}
+                {semDescricao > 0 && <span className="text-amber-600"> · {semDescricao} sem descrição</span>}
               </p>
             </div>
 
             {comDescricao > 0 && (
-              <label className="flex items-center gap-3 rounded-lg border border-hairline px-4 py-3 text-sm transition hover:bg-bg-base">
+              <label className="flex items-center gap-3 rounded-lg border border-hairline px-4 py-3 text-sm hover:bg-bg-base">
                 <input
                   type="checkbox"
                   checked={sobrescrever}
                   onChange={(e) => setSobrescrever(e.target.checked)}
                   className="size-4 rounded border-text-low accent-accent"
                 />
-                <span>
-                  <span className="font-medium text-text-hi">Sobrescrever descrições existentes</span>
-                  <span className="block text-xs text-text-low">
-                    {comDescricao} aula{comDescricao !== 1 ? "s" : ""} já {comDescricao !== 1 ? "têm" : "tem"} descrição
-                  </span>
+                <span className="font-medium text-text-hi">
+                  Refazer também as {comDescricao} que já têm descrição
                 </span>
               </label>
             )}
 
             <p className="text-xs text-text-low">
-              A IA vai analisar os módulos e contexto do curso para gerar títulos e descrições
-              em português. Podes rever e editar antes de guardar.
+              A IA lê o início de cada vídeo e grava o título e a descrição logo a seguir, uma aula de cada
+              vez. Para os vídeos do Google Drive vai pedir-te autorização da tua conta Google. Nada é
+              descarregado nem partilhado.
             </p>
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setAberto(false)}>
                 Cancelar
               </Button>
-              <Button onClick={gerar}>
+              <Button onClick={correr} disabled={aGerar === 0}>
                 <Sparkles className="size-4" />
-                Gerar {sobrescrever ? aulas.length : semDescricao} descrição{(sobrescrever ? aulas.length : semDescricao) !== 1 ? "ões" : ""}
+                Começar ({aGerar} aula{aGerar !== 1 ? "s" : ""})
               </Button>
             </div>
           </div>
         )}
 
-        {estado === "a-gerar" && (
-          <div className="flex flex-col items-center gap-3 py-12 text-text-low">
-            <Loader2 className="size-6 animate-spin" />
-            <p className="text-sm">{progresso || "A ler as aulas e gerar títulos e descrições..."}</p>
-            <p className="text-xs">A IA lê um trecho de cada vídeo antes de gerar. Pode demorar até 1 minuto.</p>
-          </div>
-        )}
-
-        {estado === "rever" && (
+        {(estado === "a-correr" || estado === "fim") && (
           <div className="space-y-3">
-            {nTranscricoes > 0 && (
-              <div className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
-                A IA leu a transcrição de {nTranscricoes} vídeo{nTranscricoes !== 1 ? "s" : ""} para gerar títulos mais fiéis ao conteúdo.
-              </div>
-            )}
+            {erro && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>}
 
-            {ignoradas > 0 && (
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                {ignoradas} aula{ignoradas !== 1 ? "s" : ""} ficaram de fora porque não foi possível ler o vídeo.
+            <div className="flex items-center gap-3">
+              {estado === "a-correr" && <Loader2 className="size-4 shrink-0 animate-spin text-accent" />}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-text-hi">
+                  {estado === "a-correr" ? `A ler aula ${Math.min(feitas + 1, total)} de ${total}` : "Terminado"}
+                </p>
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-base">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all"
+                    style={{ width: `${total ? (feitas / total) * 100 : 0}%` }}
+                  />
+                </div>
               </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <button
-                onClick={selecionarTodos}
-                className="text-sm font-medium text-accent hover:underline"
-              >
-                {selecionados.size === resultados.length ? "Desselecionar tudo" : "Selecionar tudo"}
-              </button>
-              <span className="text-xs text-text-low">
-                {nSel} de {resultados.length} selecionada{nSel !== 1 ? "s" : ""}
+              <span className="shrink-0 text-xs text-text-low">
+                {okN} feitas{falhouN > 0 ? ` · ${falhouN} falhadas` : ""}
               </span>
             </div>
 
-            <div className="max-h-[400px] space-y-2 overflow-y-auto rounded-lg border border-hairline p-2">
-              {resultados.map((d, i) => (
-                <div
-                  key={d.aula_id}
-                  className={`rounded-lg border p-3 transition ${
-                    selecionados.has(d.aula_id)
-                      ? "border-accent bg-accent-soft/30"
-                      : "border-hairline opacity-60"
-                  }`}
-                >
-                  <div className="mb-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => alternar(d.aula_id)}
-                      className={`grid size-5 shrink-0 place-items-center rounded border ${
-                        selecionados.has(d.aula_id)
-                          ? "border-accent bg-accent text-white"
-                          : "border-text-low"
-                      }`}
-                    >
-                      {selecionados.has(d.aula_id) && <Check className="size-3.5" />}
-                    </button>
-                    <span className="text-xs text-text-low">
-                      {i + 1}. {d.titulo_original}
-                    </span>
-                  </div>
-                  <div className="mb-1.5">
-                    <label className="mb-0.5 block text-[11px] font-medium text-text-low">Título</label>
-                    <input
-                      type="text"
-                      value={titulos[d.aula_id] ?? d.titulo_gerado}
-                      onChange={(e) =>
-                        setTitulos((prev) => ({ ...prev, [d.aula_id]: e.target.value }))
-                      }
-                      maxLength={80}
-                      className="h-8 w-full rounded-md border border-hairline bg-bg-elevated px-2.5 text-sm text-text-hi placeholder:text-text-low focus:border-accent focus:outline-none disabled:opacity-50"
-                      disabled={!selecionados.has(d.aula_id)}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-0.5 block text-[11px] font-medium text-text-low">Descrição</label>
-                    <Textarea
-                      value={textos[d.aula_id] ?? d.descricao_gerada}
-                      onChange={(e) =>
-                        setTextos((prev) => ({ ...prev, [d.aula_id]: e.target.value }))
-                      }
-                      className="min-h-[60px] text-sm"
-                      disabled={!selecionados.has(d.aula_id)}
-                    />
-                  </div>
+            <div className="max-h-[320px] space-y-1 overflow-y-auto rounded-lg border border-hairline p-2">
+              {[...linhas].reverse().map((l) => (
+                <div key={l.id} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-sm">
+                  {l.estado === "feito" ? (
+                    <Check className="mt-0.5 size-4 shrink-0 text-green-600" />
+                  ) : (
+                    <XIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                  )}
+                  <span className="min-w-0 flex-1">
+                    {l.estado === "feito" ? (
+                      <>
+                        <span className="block text-[11px] text-text-low">{l.original}</span>
+                        <span className="font-medium text-text-hi">{l.titulo}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-text-mid">{l.original}</span>
+                        <span className="block text-[11px] text-amber-700">
+                          {MOTIVOS[l.motivo ?? ""] ?? l.motivo ?? "não foi possível"}
+                        </span>
+                      </>
+                    )}
+                  </span>
                 </div>
               ))}
+              {linhas.length === 0 && (
+                <p className="p-3 text-center text-xs text-text-low">A preparar...</p>
+              )}
             </div>
 
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                className="text-xs"
-                onClick={() => {
-                  setEstado("configurar");
-                  setErro(null);
-                }}
-              >
-                Voltar
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setAberto(false)}>
-                  Cancelar
+            <div className="flex justify-end gap-2">
+              {estado === "a-correr" ? (
+                <Button variant="outline" onClick={() => (parar.current = true)}>
+                  Parar
                 </Button>
-                <Button onClick={aplicar} disabled={nSel === 0 || busy}>
-                  {busy ? "A guardar..." : `Aplicar ${nSel} aula${nSel !== 1 ? "s" : ""}`}
-                </Button>
-              </div>
+              ) : (
+                <Button onClick={() => setAberto(false)}>Fechar</Button>
+              )}
             </div>
           </div>
         )}
