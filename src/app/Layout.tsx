@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   BookOpen,
+  FileText,
   FolderKanban,
   Home,
   LogOut,
@@ -26,6 +27,7 @@ type ItemNav = { label: string; to: string; icon: LucideIcon; end?: boolean };
 
 const NAV: ItemNav[] = [
   { label: "Início", to: "/", icon: Home, end: true },
+  { label: "Documentos", to: "/documentos", icon: FileText },
   { label: "Comunidade", to: "/comunidade", icon: MessagesSquare },
   { label: "O meu perfil", to: "/perfil", icon: UserCircle },
 ];
@@ -35,6 +37,7 @@ const NAV_ADMIN: ItemNav[] = [
   { label: "Membros", to: "/admin/membros", icon: Users },
   { label: "Conteúdo", to: "/admin/conteudo", icon: FolderKanban },
   { label: "Grupos", to: "/admin/grupos", icon: BookOpen },
+  { label: "Documentos", to: "/admin/documentos", icon: FileText },
 ];
 
 function usePedidosPendentes(ativo: boolean) {

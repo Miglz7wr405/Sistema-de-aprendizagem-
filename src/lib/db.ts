@@ -3,6 +3,7 @@ import { nomeFicheiroSeguro } from "./utils";
 import type {
   Aula,
   Curso,
+  Documento,
   Grupo,
   Membro,
   Mensagem,
@@ -341,6 +342,34 @@ export const Ficheiros = {
 };
 
 export const LIMITE_UPLOAD = 50 * 1024 * 1024;
+
+// ─── Documentos ─────────────────────────────────────────────────────────
+
+export const Documentos = {
+  async listar() {
+    const { data, error } = await supabase
+      .from("documentos")
+      .select("*")
+      .order("ordem")
+      .order("created_at", { ascending: false });
+    falhar(error);
+    return (data ?? []) as Documento[];
+  },
+  async criar(d: Partial<Documento>) {
+    const { data, error } = await supabase.from("documentos").insert(d).select().single();
+    falhar(error);
+    return data as Documento;
+  },
+  async atualizar(id: string, d: Partial<Documento>) {
+    const { error } = await supabase.from("documentos").update(d).eq("id", id);
+    falhar(error);
+  },
+  async apagar(doc: Documento) {
+    const { error } = await supabase.from("documentos").delete().eq("id", doc.id);
+    falhar(error);
+    if (doc.storage_path) await supabase.storage.from(BUCKET).remove([doc.storage_path]);
+  },
+};
 
 // ─── Capas dos cursos (bucket público, URL fixo guardado em cursos.capa_url) ─
 

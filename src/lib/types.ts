@@ -124,6 +124,22 @@ export type Notificacao = {
   created_at: string;
 };
 
+export type Documento = {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  categoria: string | null;
+  storage_path: string;
+  ficheiro_nome: string;
+  ficheiro_tipo: string | null;
+  tamanho: number | null;
+  visibilidade: Visibilidade;
+  autor_id: string | null;
+  autor_nome: string | null;
+  ordem: number;
+  created_at: string;
+};
+
 export const PAPEL_LABEL: Record<Papel, string> = {
   admin: "Administrador",
   equipa: "Equipa Insight",
