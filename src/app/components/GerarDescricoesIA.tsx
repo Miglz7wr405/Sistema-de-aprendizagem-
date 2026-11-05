@@ -10,7 +10,8 @@ import { Button } from "./primitives";
 
 type DescricaoGerada = {
   aula_id: string;
-  titulo: string;
+  titulo_original: string;
+  titulo_gerado: string;
   descricao_gerada: string;
 };
 
@@ -35,6 +36,7 @@ export function BotaoGerarDescricoes({
   const [resultados, setResultados] = useState<DescricaoGerada[]>([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [textos, setTextos] = useState<Record<string, string>>({});
+  const [titulos, setTitulos] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -48,6 +50,7 @@ export function BotaoGerarDescricoes({
     setResultados([]);
     setSelecionados(new Set());
     setTextos({});
+    setTitulos({});
     setErro(null);
   }
 
@@ -62,8 +65,13 @@ export function BotaoGerarDescricoes({
       setResultados(resp.descricoes);
       setSelecionados(new Set(resp.descricoes.map((d) => d.aula_id)));
       const t: Record<string, string> = {};
-      for (const d of resp.descricoes) t[d.aula_id] = d.descricao_gerada;
+      const tit: Record<string, string> = {};
+      for (const d of resp.descricoes) {
+        t[d.aula_id] = d.descricao_gerada;
+        tit[d.aula_id] = d.titulo_gerado;
+      }
       setTextos(t);
+      setTitulos(tit);
       setEstado("rever");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao gerar descrições.";
@@ -92,19 +100,24 @@ export function BotaoGerarDescricoes({
     setBusy(true);
     try {
       const results = await Promise.allSettled(
-        escolhidos.map((d) => Aulas.atualizar(d.aula_id, { descricao: textos[d.aula_id] ?? d.descricao_gerada })),
+        escolhidos.map((d) =>
+          Aulas.atualizar(d.aula_id, {
+            titulo: titulos[d.aula_id] ?? d.titulo_gerado,
+            descricao: textos[d.aula_id] ?? d.descricao_gerada,
+          }),
+        ),
       );
       const ok = results.filter((r) => r.status === "fulfilled").length;
       const falhou = results.length - ok;
       if (falhou > 0) {
-        toast.error(`${ok} descrições guardadas, ${falhou} falharam.`);
+        toast.error(`${ok} aula${ok !== 1 ? "s" : ""} atualizada${ok !== 1 ? "s" : ""}, ${falhou} falha${falhou !== 1 ? "ram" : "ou"}.`);
       } else {
-        toast.success(`${ok} descrição${ok !== 1 ? "ões" : ""} guardada${ok !== 1 ? "s" : ""}`);
+        toast.success(`${ok} aula${ok !== 1 ? "s" : ""} atualizada${ok !== 1 ? "s" : ""} com título e descrição.`);
       }
       setAberto(false);
       onAplicar();
     } catch {
-      toast.error("Erro ao guardar descrições.");
+      toast.error("Erro ao guardar alterações.");
     } finally {
       setBusy(false);
     }
@@ -119,7 +132,7 @@ export function BotaoGerarDescricoes({
         className="h-8 px-2.5"
         onClick={abrir}
         disabled={disabled}
-        title="Gerar descrições com IA"
+        title="Gerar títulos e descrições com IA"
       >
         <Sparkles className="size-4" />
         IA
@@ -128,7 +141,7 @@ export function BotaoGerarDescricoes({
       <Modal
         open={aberto}
         onClose={() => estado !== "a-gerar" && !busy && setAberto(false)}
-        title="Gerar descrições com IA"
+        title="Gerar títulos e descrições com IA"
         size="lg"
       >
         {estado === "configurar" && (
@@ -170,7 +183,7 @@ export function BotaoGerarDescricoes({
             )}
 
             <p className="text-xs text-text-low">
-              A IA vai analisar os títulos, módulos e contexto do curso para escrever descrições
+              A IA vai analisar os módulos e contexto do curso para gerar títulos e descrições
               em português. Podes rever e editar antes de guardar.
             </p>
 
@@ -189,7 +202,7 @@ export function BotaoGerarDescricoes({
         {estado === "a-gerar" && (
           <div className="flex flex-col items-center gap-3 py-12 text-text-low">
             <Loader2 className="size-6 animate-spin" />
-            <p className="text-sm">A gerar descrições com IA...</p>
+            <p className="text-sm">A gerar títulos e descrições com IA...</p>
             <p className="text-xs">Pode demorar até 30 segundos.</p>
           </div>
         )}
@@ -230,18 +243,34 @@ export function BotaoGerarDescricoes({
                     >
                       {selecionados.has(d.aula_id) && <Check className="size-3.5" />}
                     </button>
-                    <span className="text-sm font-medium text-text-hi">
-                      {i + 1}. {d.titulo}
+                    <span className="text-xs text-text-low">
+                      {i + 1}. {d.titulo_original}
                     </span>
                   </div>
-                  <Textarea
-                    value={textos[d.aula_id] ?? d.descricao_gerada}
-                    onChange={(e) =>
-                      setTextos((prev) => ({ ...prev, [d.aula_id]: e.target.value }))
-                    }
-                    className="min-h-[60px] text-sm"
-                    disabled={!selecionados.has(d.aula_id)}
-                  />
+                  <div className="mb-1.5">
+                    <label className="mb-0.5 block text-[11px] font-medium text-text-low">Título</label>
+                    <input
+                      type="text"
+                      value={titulos[d.aula_id] ?? d.titulo_gerado}
+                      onChange={(e) =>
+                        setTitulos((prev) => ({ ...prev, [d.aula_id]: e.target.value }))
+                      }
+                      maxLength={80}
+                      className="h-8 w-full rounded-md border border-hairline bg-bg-elevated px-2.5 text-sm text-text-hi placeholder:text-text-low focus:border-accent focus:outline-none disabled:opacity-50"
+                      disabled={!selecionados.has(d.aula_id)}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[11px] font-medium text-text-low">Descrição</label>
+                    <Textarea
+                      value={textos[d.aula_id] ?? d.descricao_gerada}
+                      onChange={(e) =>
+                        setTextos((prev) => ({ ...prev, [d.aula_id]: e.target.value }))
+                      }
+                      className="min-h-[60px] text-sm"
+                      disabled={!selecionados.has(d.aula_id)}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -262,7 +291,7 @@ export function BotaoGerarDescricoes({
                   Cancelar
                 </Button>
                 <Button onClick={aplicar} disabled={nSel === 0 || busy}>
-                  {busy ? "A guardar..." : `Aplicar ${nSel} descrição${nSel !== 1 ? "ões" : ""}`}
+                  {busy ? "A guardar..." : `Aplicar ${nSel} aula${nSel !== 1 ? "s" : ""}`}
                 </Button>
               </div>
             </div>

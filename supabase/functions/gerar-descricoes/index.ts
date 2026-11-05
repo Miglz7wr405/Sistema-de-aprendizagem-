@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     })
     .join("\n");
 
-  const prompt = `Gera descrições para as aulas deste curso:
+  const prompt = `Gera títulos e descrições para as aulas deste curso:
 
 Secção: ${seccao?.titulo ?? "—"}
 Curso: ${curso.titulo} (Nível: ${curso.nivel ?? "—"})
@@ -102,8 +102,12 @@ Descrição do curso: ${curso.descricao || "sem descrição"}
 Aulas (por ordem):
 ${listaAulas}
 
+Para cada aula, gera:
+- Um título claro e curto (máximo 60 caracteres), descritivo do conteúdo da aula
+- Uma descrição com 2 a 4 frases explicando o que o aluno vai aprender
+
 Responde APENAS com um array JSON, sem markdown, no formato:
-[{"aula_id": "...", "descricao": "..."}]`;
+[{"aula_id": "...", "titulo": "...", "descricao": "..."}]`;
 
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -118,7 +122,7 @@ Responde APENAS com um array JSON, sem markdown, no formato:
         max_tokens: 4096,
         temperature: 0.7,
         system:
-          "És um assistente educativo que escreve descrições de aulas para uma academia online. Escreves em português europeu, de forma clara e motivadora. As descrições devem ter 2 a 4 frases e explicar o que o aluno vai aprender na aula. Não uses emojis.",
+          "És um assistente educativo que escreve títulos e descrições de aulas para uma academia online. Escreves em português europeu, de forma clara e motivadora. Os títulos devem ser curtos, claros e descritivos. As descrições devem ter 2 a 4 frases e explicar o que o aluno vai aprender na aula. Não uses emojis.",
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -145,15 +149,15 @@ Responde APENAS com um array JSON, sem markdown, no formato:
       return json({ erro: "A IA devolveu uma resposta inesperada. Tenta outra vez." }, 502);
     }
 
-    const descricoes: Array<{ aula_id: string; descricao: string }> = JSON.parse(match[0]);
+    const gerados: Array<{ aula_id: string; titulo?: string; descricao: string }> = JSON.parse(match[0]);
 
-    // Validar e mapear com os títulos
     const aulaMap = new Map((aulas as AulaRow[]).map((a) => [a.id, a.titulo]));
-    const resultado = descricoes
+    const resultado = gerados
       .filter((d) => d.aula_id && d.descricao && aulaMap.has(d.aula_id))
       .map((d) => ({
         aula_id: d.aula_id,
-        titulo: aulaMap.get(d.aula_id)!,
+        titulo_original: aulaMap.get(d.aula_id)!,
+        titulo_gerado: d.titulo?.trim() ?? aulaMap.get(d.aula_id)!,
         descricao_gerada: d.descricao.trim(),
       }));
 
