@@ -34,6 +34,7 @@ import { AvisoDrivePrivado, useEstadoDrive } from "../components/Drive";
 import { BotaoDrive, BotaoImportarPasta } from "../components/DrivePicker";
 import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
 import { BotaoImportarVimeo, type VideoVimeo } from "../components/VimeoImporter";
+import { BotaoGerarDescricoes } from "../components/GerarDescricoesIA";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -851,6 +852,15 @@ export default function ConteudoPage() {
                 </Link>
                 <BotaoImportarVimeo onImportar={importarVimeo} disabled={busy} />
                 <BotaoImportarPasta onImportar={importarPastaDrive} disabled={busy} />
+                {aulas.length > 0 && seccao && (
+                  <BotaoGerarDescricoes
+                    curso={curso}
+                    seccao={seccao}
+                    aulas={aulas}
+                    onAplicar={refetch}
+                    disabled={busy}
+                  />
+                )}
                 <Button className="h-8 px-3" onClick={() => abrirAula("nova")}>
                   <Plus className="size-4" /> Aula
                 </Button>
