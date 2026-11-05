@@ -13,6 +13,7 @@ import {
   Users,
   X,
   type LucideIcon,
+  KeyRound,
 } from "lucide-react";
 
 import { Perfis } from "@/lib/db";
@@ -38,6 +39,7 @@ const NAV_ADMIN: ItemNav[] = [
   { label: "Conteúdo", to: "/admin/conteudo", icon: FolderKanban },
   { label: "Grupos", to: "/admin/grupos", icon: BookOpen },
   { label: "Documentos", to: "/admin/documentos", icon: FileText },
+  { label: "Chaves de API", to: "/admin/chaves", icon: KeyRound },
 ];
 
 function usePedidosPendentes(ativo: boolean) {

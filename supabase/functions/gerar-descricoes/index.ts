@@ -1,4 +1,4 @@
-import { chamador, clienteAdmin, cors, json } from "../_shared/comum.ts";
+import { chamador, clienteAdmin, cors, json, segredo } from "../_shared/comum.ts";
 
 function extrairIdYouTube(url: string): string | null {
   const m = url.match(
@@ -84,7 +84,7 @@ async function buscarTranscricaoYT(videoId: string): Promise<string | null> {
 async function buscarTranscricaoVimeo(
   videoId: string,
 ): Promise<string | null> {
-  const token = Deno.env.get("VIMEO_ACCESS_TOKEN");
+  const token = await segredo("VIMEO_ACCESS_TOKEN");
   if (!token) return null;
 
   const ctrl = new AbortController();
@@ -141,7 +141,7 @@ async function buscarTranscricaoVimeo(
 async function buscarTranscricaoDrive(
   fileId: string,
 ): Promise<string | null> {
-  const groqKey = Deno.env.get("GROQ_API_KEY");
+  const groqKey = await segredo("GROQ_API_KEY");
   if (!groqKey) return null;
 
   const ctrl = new AbortController();
@@ -228,11 +228,11 @@ Deno.serve(async (req) => {
     return json({ erro: "Só administradores podem fazer isto." }, 403);
   }
 
-  const apiKey = Deno.env.get("GROQ_API_KEY");
+  const apiKey = await segredo("GROQ_API_KEY");
   if (!apiKey) {
     return json(
       {
-        erro: "GROQ_API_KEY não configurado. Cria uma chave gratuita em console.groq.com e adiciona-a em Supabase > Edge Functions > Secrets.",
+        erro: "GROQ_API_KEY não configurado. Cola a chave em Administração > Chaves de API.",
       },
       503,
     );

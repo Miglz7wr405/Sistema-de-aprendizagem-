@@ -18,6 +18,7 @@ const MembrosPage = lazy(() => import("./app/admin/MembrosPage"));
 const ConteudoPage = lazy(() => import("./app/admin/ConteudoPage"));
 const GruposPage = lazy(() => import("./app/admin/GruposPage"));
 const DocumentosAdminPage = lazy(() => import("./app/admin/DocumentosAdminPage"));
+const ChavesPage = lazy(() => import("./app/admin/ChavesPage"));
 const DocumentosPage = lazy(() => import("./app/pages/DocumentosPage"));
 
 function SoAdmin({ children }: { children: ReactNode }) {
@@ -101,6 +102,14 @@ function Rotas() {
             element={
               <SoAdmin>
                 <DocumentosAdminPage />
+              </SoAdmin>
+            }
+          />
+          <Route
+            path="admin/chaves"
+            element={
+              <SoAdmin>
+                <ChavesPage />
               </SoAdmin>
             }
           />
