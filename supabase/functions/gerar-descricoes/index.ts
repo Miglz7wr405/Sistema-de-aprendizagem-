@@ -12,6 +12,13 @@ function extrairIdVimeo(url: string): string | null {
   return m?.[1] ?? null;
 }
 
+function extrairIdDrive(url: string): string | null {
+  const m =
+    url.match(/\/d\/([a-zA-Z0-9_-]{20,})/) ||
+    url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+  return m?.[1] ?? null;
+}
+
 async function buscarTranscricaoYT(videoId: string): Promise<string | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
@@ -131,6 +138,86 @@ async function buscarTranscricaoVimeo(
   }
 }
 
+async function buscarTranscricaoDrive(
+  fileId: string,
+): Promise<string | null> {
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) return null;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 25000);
+  try {
+    const resp = await fetch(
+      `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`,
+      { signal: ctrl.signal, redirect: "follow" },
+    );
+
+    const ct = resp.headers.get("content-type") || "";
+    if (!resp.ok || ct.includes("text/html")) {
+      await resp.body?.cancel();
+      return null;
+    }
+
+    const reader = resp.body!.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    const MAX = 2 * 1024 * 1024;
+
+    while (size < MAX) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      size += value.byteLength;
+    }
+    reader.cancel();
+
+    if (size < 5000) return null;
+
+    const bytes = new Uint8Array(Math.min(size, MAX));
+    let off = 0;
+    for (const c of chunks) {
+      const len = Math.min(c.byteLength, MAX - off);
+      bytes.set(c.subarray(0, len), off);
+      off += len;
+      if (off >= MAX) break;
+    }
+
+    const ext = ct.includes("webm")
+      ? "webm"
+      : ct.includes("mpeg")
+        ? "mpeg"
+        : "mp4";
+
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([bytes], { type: `video/${ext}` }),
+      `video.${ext}`,
+    );
+    form.append("model", "whisper-1");
+    form.append("language", "pt");
+    form.append("response_format", "text");
+
+    const wr = await fetch(
+      "https://api.openai.com/v1/audio/transcriptions",
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openaiKey}` },
+        body: form,
+        signal: ctrl.signal,
+      },
+    );
+
+    if (!wr.ok) return null;
+    const text = await wr.text();
+    return text.trim().slice(0, 500) || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ erro: "Método não permitido" }, 405);
@@ -205,6 +292,7 @@ Deno.serve(async (req) => {
   const transcricoes: Record<string, string> = {};
 
   const aulasComUrl = (aulas as AulaRow[]).filter((a) => a.url);
+  const driveAulas: Array<{ id: string; driveId: string }> = [];
 
   await Promise.allSettled(
     aulasComUrl.map(async (a) => {
@@ -265,9 +353,26 @@ Deno.serve(async (req) => {
         ]);
         void tituloRes;
         void transcRes;
+        return;
+      }
+
+      const driveId = extrairIdDrive(a.url!);
+      if (driveId) {
+        driveAulas.push({ id: a.id, driveId });
       }
     }),
   );
+
+  // Drive: processar 3 de cada vez (downloads mais pesados)
+  for (let i = 0; i < driveAulas.length; i += 3) {
+    const lote = driveAulas.slice(i, i + 3);
+    await Promise.allSettled(
+      lote.map(async ({ id, driveId }) => {
+        const t = await buscarTranscricaoDrive(driveId);
+        if (t) transcricoes[id] = t;
+      }),
+    );
+  }
 
   const nTranscricoes = Object.keys(transcricoes).length;
 
