@@ -1,21 +1,12 @@
 import { chamador, clienteAdmin, cors, json, segredo } from "../_shared/comum.ts";
 
 function extrairIdYouTube(url: string): string | null {
-  const m = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-  );
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
   return m?.[1] ?? null;
 }
 
 function extrairIdVimeo(url: string): string | null {
   const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  return m?.[1] ?? null;
-}
-
-function extrairIdDrive(url: string): string | null {
-  const m =
-    url.match(/\/d\/([a-zA-Z0-9_-]{20,})/) ||
-    url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
   return m?.[1] ?? null;
 }
 
@@ -26,17 +17,14 @@ async function buscarTranscricaoYT(videoId: string): Promise<string | null> {
     const resp = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
       signal: ctrl.signal,
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "pt-PT,pt;q=0.9,en;q=0.8",
       },
     });
     if (!resp.ok) return null;
     const html = await resp.text();
-
     const match = html.match(/"captionTracks":(\[[\s\S]*?\])/);
     if (!match) return null;
-
     let tracks: Array<{ baseUrl?: string; languageCode?: string }>;
     try {
       tracks = JSON.parse(match[1]);
@@ -44,36 +32,19 @@ async function buscarTranscricaoYT(videoId: string): Promise<string | null> {
       return null;
     }
     if (!tracks.length) return null;
-
-    const track =
-      tracks.find((t) => t.languageCode?.startsWith("pt")) ||
-      tracks.find((t) => t.languageCode === "en") ||
-      tracks[0];
+    const track = tracks.find((t) => t.languageCode?.startsWith("pt")) || tracks.find((t) => t.languageCode === "en") || tracks[0];
     if (!track?.baseUrl) return null;
-
     const sep = track.baseUrl.includes("?") ? "&" : "?";
-    const tResp = await fetch(track.baseUrl + sep + "fmt=json3", {
-      signal: ctrl.signal,
-    });
+    const tResp = await fetch(track.baseUrl + sep + "fmt=json3", { signal: ctrl.signal });
     if (!tResp.ok) return null;
     const data = await tResp.json();
-
     const linhas: string[] = [];
     for (const ev of data.events || []) {
       if ((ev.tStartMs || 0) / 1000 > 45) break;
-      const txt = (ev.segs || [])
-        .map((s: { utf8?: string }) => s.utf8 || "")
-        .join("");
+      const txt = (ev.segs || []).map((s: { utf8?: string }) => s.utf8 || "").join("");
       if (txt.trim() && txt.trim() !== "\n") linhas.push(txt.trim());
     }
-
-    return (
-      linhas
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 500) || null
-    );
+    return linhas.join(" ").replace(/\s+/g, " ").trim().slice(0, 500) || null;
   } catch {
     return null;
   } finally {
@@ -81,56 +52,34 @@ async function buscarTranscricaoYT(videoId: string): Promise<string | null> {
   }
 }
 
-async function buscarTranscricaoVimeo(
-  videoId: string,
-): Promise<string | null> {
+async function buscarTranscricaoVimeo(videoId: string): Promise<string | null> {
   const token = await segredo("VIMEO_ACCESS_TOKEN");
   if (!token) return null;
-
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 6000);
   try {
-    const resp = await fetch(
-      `https://api.vimeo.com/videos/${videoId}/texttracks`,
-      {
-        signal: ctrl.signal,
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      },
-    );
+    const resp = await fetch(`https://api.vimeo.com/videos/${videoId}/texttracks`, {
+      signal: ctrl.signal,
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
     if (!resp.ok) return null;
     const data = await resp.json();
-
     const track = data.data?.[0];
     if (!track?.link) return null;
-
     const tResp = await fetch(track.link, { signal: ctrl.signal });
     if (!tResp.ok) return null;
     const vtt = await tResp.text();
-
     const linhas: string[] = [];
     for (const bloco of vtt.split("\n\n")) {
       const tm = bloco.match(/(\d{2}):(\d{2}):(\d{2})/);
       if (tm) {
-        const seg =
-          parseInt(tm[1]) * 3600 + parseInt(tm[2]) * 60 + parseInt(tm[3]);
+        const seg = parseInt(tm[1]) * 3600 + parseInt(tm[2]) * 60 + parseInt(tm[3]);
         if (seg > 45) break;
-        const textos = bloco
-          .split("\n")
-          .filter(
-            (l) =>
-              !l.includes("-->") && !/^\d+$/.test(l.trim()) && l.trim(),
-          );
+        const textos = bloco.split("\n").filter((l) => !l.includes("-->") && !/^\d+$/.test(l.trim()) && l.trim());
         linhas.push(...textos);
       }
     }
-
-    return (
-      linhas
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 500) || null
-    );
+    return linhas.join(" ").replace(/\s+/g, " ").trim().slice(0, 500) || null;
   } catch {
     return null;
   } finally {
@@ -138,79 +87,43 @@ async function buscarTranscricaoVimeo(
   }
 }
 
-async function buscarTranscricaoDrive(
-  fileId: string,
-): Promise<string | null> {
-  const groqKey = await segredo("GROQ_API_KEY");
-  if (!groqKey) return null;
-
+async function transcreverTrecho(file: File, groqKey: string): Promise<string | null> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 25000);
+  const timer = setTimeout(() => ctrl.abort(), 30000);
   try {
-    const resp = await fetch(
-      `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`,
-      { signal: ctrl.signal, redirect: "follow" },
-    );
-
-    const ct = resp.headers.get("content-type") || "";
-    if (!resp.ok || ct.includes("text/html")) {
-      await resp.body?.cancel();
-      return null;
-    }
-
-    const reader = resp.body!.getReader();
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    const MAX = 2 * 1024 * 1024;
-
-    while (size < MAX) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      size += value.byteLength;
-    }
-    reader.cancel();
-
-    if (size < 5000) return null;
-
-    const bytes = new Uint8Array(Math.min(size, MAX));
-    let off = 0;
-    for (const c of chunks) {
-      const len = Math.min(c.byteLength, MAX - off);
-      bytes.set(c.subarray(0, len), off);
-      off += len;
-      if (off >= MAX) break;
-    }
-
-    const ext = ct.includes("webm")
-      ? "webm"
-      : ct.includes("mpeg")
-        ? "mpeg"
-        : "mp4";
-
     const form = new FormData();
-    form.append(
-      "file",
-      new Blob([bytes], { type: `video/${ext}` }),
-      `video.${ext}`,
-    );
+    form.append("file", file, "trecho.mp4");
     form.append("model", "whisper-large-v3-turbo");
     form.append("language", "pt");
     form.append("response_format", "text");
-
-    const wr = await fetch(
-      "https://api.groq.com/openai/v1/audio/transcriptions",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${groqKey}` },
-        body: form,
-        signal: ctrl.signal,
-      },
-    );
-
-    if (!wr.ok) return null;
+    const wr = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${groqKey}` },
+      body: form,
+      signal: ctrl.signal,
+    });
+    if (!wr.ok) {
+      console.error("Whisper:", wr.status, (await wr.text()).slice(0, 300));
+      return null;
+    }
     const text = await wr.text();
     return text.trim().slice(0, 500) || null;
+  } catch (e) {
+    console.error("Whisper erro:", e);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function tituloNoembed(url: string): Promise<string | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j.title || null;
   } catch {
     return null;
   } finally {
@@ -250,29 +163,24 @@ Deno.serve(async (req) => {
 
   const apiKey = await segredo("GROQ_API_KEY");
   if (!apiKey) {
-    return json(
-      {
-        erro: "GROQ_API_KEY não configurado. Cola a chave em Administração > Chaves de API.",
-      },
-      503,
-    );
+    return json({ erro: "GROQ_API_KEY não configurado. Cola a chave em Administração > Chaves de API." }, 503);
   }
 
-  const { curso_id, sobrescrever } = await req.json();
+  if ((req.headers.get("content-type") ?? "").includes("multipart/form-data")) {
+    const form = await req.formData();
+    const f = form.get("ficheiro");
+    if (!(f instanceof File)) return json({ erro: "Ficheiro em falta." }, 400);
+    const texto = await transcreverTrecho(f, apiKey);
+    return json({ ok: true, texto });
+  }
+
+  const { curso_id, sobrescrever, transcricoes: doCliente } = await req.json();
   if (!curso_id) return json({ erro: "curso_id é obrigatório." }, 400);
 
-  const { data: curso, error: errCurso } = await admin
-    .from("cursos")
-    .select("id, titulo, descricao, nivel, seccao_id")
-    .eq("id", curso_id)
-    .maybeSingle();
+  const { data: curso, error: errCurso } = await admin.from("cursos").select("id, titulo, descricao, nivel, seccao_id").eq("id", curso_id).maybeSingle();
   if (errCurso || !curso) return json({ erro: "Curso não encontrado." }, 404);
 
-  const { data: seccao } = await admin
-    .from("seccoes")
-    .select("titulo")
-    .eq("id", curso.seccao_id)
-    .maybeSingle();
+  const { data: seccao } = await admin.from("seccoes").select("titulo").eq("id", curso.seccao_id).maybeSingle();
 
   const { data: todasAulas, error: errAulas } = await admin
     .from("aulas")
@@ -282,122 +190,53 @@ Deno.serve(async (req) => {
     .order("created_at");
   if (errAulas) return json({ erro: "Erro ao buscar aulas." }, 500);
 
-  const aulas = sobrescrever
-    ? (todasAulas ?? [])
-    : (todasAulas ?? []).filter(
-        (a: { descricao: string | null }) => !a.descricao?.trim(),
-      );
-
+  const aulas = sobrescrever ? (todasAulas ?? []) : (todasAulas ?? []).filter((a: { descricao: string | null }) => !a.descricao?.trim());
   if (aulas.length === 0) {
-    return json(
-      {
-        erro: "Todas as aulas já têm descrição. Ativa 'Sobrescrever' para regenerar.",
-      },
-      400,
-    );
+    return json({ erro: "Todas as aulas já têm descrição. Ativa 'Sobrescrever' para regenerar." }, 400);
   }
 
-  type AulaRow = {
-    id: string;
-    titulo: string;
-    descricao: string | null;
-    tipo: string;
-    url: string | null;
-    modulo: string | null;
-    ordem: number;
-  };
+  type AulaRow = { id: string; titulo: string; descricao: string | null; tipo: string; url: string | null; modulo: string | null; ordem: number };
 
-  // Enriquecer aulas com título do vídeo e transcrição (best-effort, tudo em paralelo)
   const extras: Record<string, string> = {};
   const transcricoes: Record<string, string> = {};
-
+  if (doCliente && typeof doCliente === "object") {
+    for (const [id, t] of Object.entries(doCliente)) {
+      if (typeof t === "string" && t.trim()) transcricoes[id] = t.trim().slice(0, 500);
+    }
+  }
   const aulasComUrl = (aulas as AulaRow[]).filter((a) => a.url);
-  const driveAulas: Array<{ id: string; driveId: string }> = [];
 
   await Promise.allSettled(
     aulasComUrl.map(async (a) => {
       const ytId = extrairIdYouTube(a.url!);
       if (ytId) {
-        // Buscar título via noembed + transcrição em paralelo
-        const [tituloRes, transcRes] = await Promise.allSettled([
-          (async () => {
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 3000);
-            try {
-              const r = await fetch(
-                `https://noembed.com/embed?url=${encodeURIComponent(a.url!)}`,
-                { signal: ctrl.signal },
-              );
-              if (r.ok) {
-                const j = await r.json();
-                if (j.title) extras[a.id] = j.title;
-              }
-            } finally {
-              clearTimeout(timer);
-            }
-          })(),
-          (async () => {
-            const t = await buscarTranscricaoYT(ytId);
-            if (t) transcricoes[a.id] = t;
-          })(),
+        await Promise.allSettled([
+          tituloNoembed(a.url!).then((t) => { if (t) extras[a.id] = t; }),
+          buscarTranscricaoYT(ytId).then((t) => { if (t && !transcricoes[a.id]) transcricoes[a.id] = t; }),
         ]);
-        void tituloRes;
-        void transcRes;
         return;
       }
-
       const vimeoId = extrairIdVimeo(a.url!);
       if (vimeoId) {
-        // Buscar título via noembed + transcrição Vimeo em paralelo
-        const [tituloRes, transcRes] = await Promise.allSettled([
-          (async () => {
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 3000);
-            try {
-              const r = await fetch(
-                `https://noembed.com/embed?url=${encodeURIComponent(a.url!)}`,
-                { signal: ctrl.signal },
-              );
-              if (r.ok) {
-                const j = await r.json();
-                if (j.title) extras[a.id] = j.title;
-              }
-            } finally {
-              clearTimeout(timer);
-            }
-          })(),
-          (async () => {
-            const t = await buscarTranscricaoVimeo(vimeoId);
-            if (t) transcricoes[a.id] = t;
-          })(),
+        await Promise.allSettled([
+          tituloNoembed(a.url!).then((t) => { if (t) extras[a.id] = t; }),
+          buscarTranscricaoVimeo(vimeoId).then((t) => { if (t && !transcricoes[a.id]) transcricoes[a.id] = t; }),
         ]);
-        void tituloRes;
-        void transcRes;
-        return;
-      }
-
-      const driveId = extrairIdDrive(a.url!);
-      if (driveId) {
-        driveAulas.push({ id: a.id, driveId });
       }
     }),
   );
 
-  // Drive: processar 3 de cada vez (downloads mais pesados)
-  for (let i = 0; i < driveAulas.length; i += 3) {
-    const lote = driveAulas.slice(i, i + 3);
-    await Promise.allSettled(
-      lote.map(async ({ id, driveId }) => {
-        const t = await buscarTranscricaoDrive(driveId);
-        if (t) transcricoes[id] = t;
-      }),
-    );
-  }
-
   const nTranscricoes = Object.keys(transcricoes).length;
 
-  // Construir o prompt
-  const linhasAulas = (aulas as AulaRow[]).map((a, i) => {
+  const uteis = (aulas as AulaRow[]).filter(
+    (a) => transcricoes[a.id] || extras[a.id] || !/^\s*aula\s*\d+\s*$/i.test(a.titulo),
+  );
+  const ignoradas = aulas.length - uteis.length;
+  if (uteis.length === 0) {
+    return json({ erro: "Não consegui ler nenhum vídeo e os títulos não dizem nada sobre o conteúdo. Verifica a permissão do Google e tenta outra vez." }, 422);
+  }
+
+  const linhasAulas = uteis.map((a, i) => {
     let linha = `${i + 1}. [${a.id}] «${a.titulo}»`;
     if (a.modulo) linha += ` (Módulo: ${a.modulo})`;
     if (extras[a.id]) linha += ` — Vídeo original: «${extras[a.id]}»`;
@@ -416,7 +255,9 @@ REGRAS PARA TÍTULOS:
 REGRAS PARA DESCRIÇÕES:
 - 2 a 4 frases explicando o que o aluno vai aprender.
 - Baseadas no conteúdo real (transcrição quando disponível).
-- Claras e motivadoras, sem exageros.`;
+- Claras e motivadoras, sem exageros.
+
+Responde SEMPRE e APENAS com o array JSON pedido. Nunca peças mais informação nem escrevas texto fora do JSON.`;
 
   const modelo = await escolherModelo(apiKey);
   const gerados: Array<{ aula_id: string; titulo?: string; descricao: string }> = [];
@@ -476,7 +317,7 @@ Responde APENAS com um array JSON, sem markdown, no formato:
       }
     }
 
-    const aulaMap = new Map((aulas as AulaRow[]).map((a) => [a.id, a.titulo]));
+    const aulaMap = new Map(uteis.map((a) => [a.id, a.titulo]));
     const resultado = gerados
       .filter((d) => d.aula_id && d.descricao && aulaMap.has(d.aula_id))
       .map((d) => ({
@@ -486,7 +327,7 @@ Responde APENAS com um array JSON, sem markdown, no formato:
         descricao_gerada: d.descricao.trim(),
       }));
 
-    return json({ ok: true, descricoes: resultado, transcricoes_usadas: nTranscricoes });
+    return json({ ok: true, descricoes: resultado, transcricoes_usadas: nTranscricoes, ignoradas });
   } catch (e) {
     console.error("gerar-descricoes:", e);
     return json({ erro: "Erro inesperado ao gerar descrições." }, 500);

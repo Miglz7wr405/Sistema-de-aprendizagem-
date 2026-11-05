@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Aulas } from "@/lib/db";
 import type { Aula, Curso, Seccao } from "@/lib/types";
 import { chamarFuncao } from "@/lib/supabase";
+import { carregarGis, obterTokenOAuth } from "@/lib/google-picker";
+import { driveId } from "@/lib/video";
 import { Modal, Textarea } from "./Modal";
 import { Button } from "./primitives";
 
@@ -40,6 +42,8 @@ export function BotaoGerarDescricoes({
   const [erro, setErro] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [nTranscricoes, setNTranscricoes] = useState(0);
+  const [ignoradas, setIgnoradas] = useState(0);
+  const [progresso, setProgresso] = useState("");
 
   const semDescricao = aulas.filter((a) => !a.descricao?.trim()).length;
   const comDescricao = aulas.length - semDescricao;
@@ -53,17 +57,54 @@ export function BotaoGerarDescricoes({
     setTextos({});
     setTitulos({});
     setErro(null);
+    carregarGis().catch(() => {});
   }
 
   async function gerar() {
     setEstado("a-gerar");
     setErro(null);
+    setProgresso("");
     try {
-      const resp = await chamarFuncao<{ ok: boolean; descricoes: DescricaoGerada[]; transcricoes_usadas?: number }>(
-        "gerar-descricoes",
-        { curso_id: curso.id, sobrescrever },
+      const transcricoes: Record<string, string> = {};
+      const alvo = aulas.filter(
+        (a) => (sobrescrever || !a.descricao?.trim()) && a.url && driveId(a.url),
       );
+      if (alvo.length > 0) {
+        const token = await obterTokenOAuth();
+        const fila = [...alvo];
+        let feitas = 0;
+        const trabalhador = async () => {
+          while (fila.length > 0) {
+            const a = fila.shift()!;
+            try {
+              const r = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${driveId(a.url!)}?alt=media`,
+                { headers: { Authorization: `Bearer ${token}`, Range: "bytes=0-3145727" } },
+              );
+              if (r.ok) {
+                const form = new FormData();
+                form.append("ficheiro", await r.blob(), "trecho.mp4");
+                const t = await chamarFuncao<{ texto?: string | null }>("gerar-descricoes", form);
+                if (t.texto) transcricoes[a.id] = t.texto;
+              }
+            } catch {
+              /* esta aula fica sem transcrição */
+            }
+            feitas += 1;
+            setProgresso(`${feitas} de ${alvo.length} vídeos lidos`);
+          }
+        };
+        await Promise.all([trabalhador(), trabalhador()]);
+      }
+      setProgresso("A gerar títulos e descrições...");
+      const resp = await chamarFuncao<{
+        ok: boolean;
+        descricoes: DescricaoGerada[];
+        transcricoes_usadas?: number;
+        ignoradas?: number;
+      }>("gerar-descricoes", { curso_id: curso.id, sobrescrever, transcricoes });
       setResultados(resp.descricoes);
+      setIgnoradas(resp.ignoradas ?? 0);
       setNTranscricoes(resp.transcricoes_usadas ?? 0);
       setSelecionados(new Set(resp.descricoes.map((d) => d.aula_id)));
       const t: Record<string, string> = {};
@@ -204,7 +245,7 @@ export function BotaoGerarDescricoes({
         {estado === "a-gerar" && (
           <div className="flex flex-col items-center gap-3 py-12 text-text-low">
             <Loader2 className="size-6 animate-spin" />
-            <p className="text-sm">A ler as aulas e gerar títulos e descrições...</p>
+            <p className="text-sm">{progresso || "A ler as aulas e gerar títulos e descrições..."}</p>
             <p className="text-xs">A IA lê um trecho de cada vídeo antes de gerar. Pode demorar até 1 minuto.</p>
           </div>
         )}
@@ -214,6 +255,12 @@ export function BotaoGerarDescricoes({
             {nTranscricoes > 0 && (
               <div className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
                 A IA leu a transcrição de {nTranscricoes} vídeo{nTranscricoes !== 1 ? "s" : ""} para gerar títulos mais fiéis ao conteúdo.
+              </div>
+            )}
+
+            {ignoradas > 0 && (
+              <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                {ignoradas} aula{ignoradas !== 1 ? "s" : ""} ficaram de fora porque não foi possível ler o vídeo.
               </div>
             )}
 
