@@ -141,8 +141,8 @@ async function buscarTranscricaoVimeo(
 async function buscarTranscricaoDrive(
   fileId: string,
 ): Promise<string | null> {
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openaiKey) return null;
+  const groqKey = Deno.env.get("GROQ_API_KEY");
+  if (!groqKey) return null;
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000);
@@ -194,15 +194,15 @@ async function buscarTranscricaoDrive(
       new Blob([bytes], { type: `video/${ext}` }),
       `video.${ext}`,
     );
-    form.append("model", "whisper-1");
+    form.append("model", "whisper-large-v3-turbo");
     form.append("language", "pt");
     form.append("response_format", "text");
 
     const wr = await fetch(
-      "https://api.openai.com/v1/audio/transcriptions",
+      "https://api.groq.com/openai/v1/audio/transcriptions",
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${openaiKey}` },
+        headers: { Authorization: `Bearer ${groqKey}` },
         body: form,
         signal: ctrl.signal,
       },
@@ -228,11 +228,11 @@ Deno.serve(async (req) => {
     return json({ erro: "Só administradores podem fazer isto." }, 403);
   }
 
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+  const apiKey = Deno.env.get("GROQ_API_KEY");
   if (!apiKey) {
     return json(
       {
-        erro: "ANTHROPIC_API_KEY não configurado. Vai ao Supabase Dashboard > Edge Functions > Secrets e adiciona a tua chave da API Anthropic.",
+        erro: "GROQ_API_KEY não configurado. Cria uma chave gratuita em console.groq.com e adiciona-a em Supabase > Edge Functions > Secrets.",
       },
       503,
     );
@@ -405,18 +405,20 @@ Responde APENAS com um array JSON, sem markdown, no formato:
 [{"aula_id": "...", "titulo": "...", "descricao": "..."}]`;
 
   try {
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 4096,
         temperature: 0.5,
-        system: `És um assistente educativo que escreve títulos e descrições de aulas para uma academia online. Escreves em português europeu, de forma clara e motivadora.
+        messages: [
+          {
+            role: "system",
+            content: `És um assistente educativo que escreve títulos e descrições de aulas para uma academia online. Escreves em português europeu, de forma clara e motivadora.
 
 REGRAS PARA TÍTULOS:
 - Baseia os títulos no conteúdo real da aula. Quando tens a transcrição do início do vídeo, usa-a para perceber exatamente o que se ensina.
@@ -428,17 +430,19 @@ REGRAS PARA DESCRIÇÕES:
 - 2 a 4 frases explicando o que o aluno vai aprender.
 - Baseadas no conteúdo real (transcrição quando disponível).
 - Claras e motivadoras, sem exageros.`,
-        messages: [{ role: "user", content: prompt }],
+          },
+          { role: "user", content: prompt },
+        ],
       }),
     });
 
     if (!resp.ok) {
       const body = await resp.text();
-      console.error("Anthropic API:", resp.status, body);
+      console.error("Groq API:", resp.status, body);
       if (resp.status === 401) {
         return json(
           {
-            erro: "Chave da API Anthropic inválida. Verifica o ANTHROPIC_API_KEY nos Secrets.",
+            erro: "Chave Groq inválida. Verifica o GROQ_API_KEY nos Secrets.",
           },
           401,
         );
@@ -453,7 +457,7 @@ REGRAS PARA DESCRIÇÕES:
     }
 
     const data = await resp.json();
-    const texto = data.content?.[0]?.text ?? "";
+    const texto = data.choices?.[0]?.message?.content ?? "";
 
     const match = texto.match(/\[[\s\S]*\]/);
     if (!match) {
