@@ -852,10 +852,10 @@ export default function ConteudoPage() {
                 </Link>
                 <BotaoImportarVimeo onImportar={importarVimeo} disabled={busy} />
                 <BotaoImportarPasta onImportar={importarPastaDrive} disabled={busy} />
-                {aulas.length > 0 && seccao && (
+                {aulas.length > 0 && (
                   <BotaoGerarDescricoes
                     curso={curso}
-                    seccao={seccao}
+                    seccao={seccao!}
                     aulas={aulas}
                     onAplicar={refetch}
                     disabled={busy}
