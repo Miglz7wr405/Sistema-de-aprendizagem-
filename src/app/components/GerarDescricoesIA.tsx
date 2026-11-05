@@ -131,13 +131,13 @@ export function BotaoGerarDescricoes({
     <>
       <Button
         variant="outline"
-        className="h-8 px-2.5"
+        className="h-10 w-full justify-center border-accent text-accent"
         onClick={abrir}
         disabled={disabled}
         title="Gerar títulos e descrições com IA"
       >
         <Sparkles className="size-4" />
-        IA
+        Gerar títulos e descrições com IA
       </Button>
 
       <Modal

@@ -852,15 +852,6 @@ export default function ConteudoPage() {
                 </Link>
                 <BotaoImportarVimeo onImportar={importarVimeo} disabled={busy} />
                 <BotaoImportarPasta onImportar={importarPastaDrive} disabled={busy} />
-                {aulas.length > 0 && (
-                  <BotaoGerarDescricoes
-                    curso={curso}
-                    seccao={seccao!}
-                    aulas={aulas}
-                    onAplicar={refetch}
-                    disabled={busy}
-                  />
-                )}
                 <Button className="h-8 px-3" onClick={() => abrirAula("nova")}>
                   <Plus className="size-4" /> Aula
                 </Button>
@@ -878,7 +869,19 @@ export default function ConteudoPage() {
               </Button>
             </div>
           ) : (
-            aulas.map((a, i) => {
+            <>
+            {seccao && (
+              <div className="mb-2">
+                <BotaoGerarDescricoes
+                  curso={curso}
+                  seccao={seccao}
+                  aulas={aulas}
+                  onAplicar={refetch}
+                  disabled={busy}
+                />
+              </div>
+            )}
+            {aulas.map((a, i) => {
               const thumb = miniaturaDoLink(a.url);
               return (
                 <div
@@ -949,7 +952,8 @@ export default function ConteudoPage() {
                   </BotaoIcone>
                 </div>
               );
-            })
+            })}
+            </>
           )}
         </Coluna>
       </div>
