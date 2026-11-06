@@ -28,6 +28,8 @@ const MOTIVOS: Record<string, string> = {
   virus_scan: "o Drive pediu confirmação de antivírus",
   permissao: "o download está bloqueado neste ficheiro",
   audio: "o vídeo não deu para ler",
+  pedido_grande: "o vídeo era grande demais para enviar",
+  sobrecarga: "servidores da IA ocupados, tenta daqui a pouco",
   limite: "limite da IA atingido",
   resposta: "a IA não respondeu em condições",
 };

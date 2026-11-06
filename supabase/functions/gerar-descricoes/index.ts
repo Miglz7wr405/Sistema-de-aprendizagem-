@@ -1,6 +1,8 @@
 import { chamador, clienteAdmin, cors, json, segredo } from "../_shared/comum.ts";
 
-const TRECHO = 4 * 1024 * 1024;
+const TRECHO = 3 * 1024 * 1024;
+/** Teto do ficheiro montado: em base64 cresce 1,33x e o Gemini recusa pedidos grandes. */
+const TETO = 6 * 1024 * 1024;
 
 const REGRAS = `Escreves em português europeu, para uma academia online.
 
@@ -34,7 +36,7 @@ function extrairJson(texto: string): { titulo?: string; descricao?: string } | n
   }
 }
 
-type Falha = "virus_scan" | "permissao" | "audio" | "limite" | "resposta";
+type Falha = "virus_scan" | "permissao" | "audio" | "limite" | "sobrecarga" | "pedido_grande" | "resposta";
 
 async function faixa(url: string, de: number, ate?: number): Promise<Uint8Array | Falha> {
   const r = await fetch(url, { headers: { Range: `bytes=${de}-${ate ?? ""}` }, redirect: "follow" });
@@ -88,10 +90,16 @@ async function trechoDrive(fileId: string): Promise<Uint8Array | Falha> {
   const moov = await faixa(url, mdatFim);
   if (typeof moov === "string") return inicio;
 
-  dv.setUint32(mdatOff, inicio.byteLength - mdatOff);
-  const juntos = new Uint8Array(inicio.byteLength + moov.byteLength);
-  juntos.set(inicio, 0);
-  juntos.set(moov, inicio.byteLength);
+  // Em vídeos longos o índice tem vários MB. Encolhe-se o trecho do início
+  // para o conjunto caber no teto, em vez de estourar o pedido à IA.
+  const espaco = TETO - moov.byteLength;
+  if (espaco < 400000) return "pedido_grande";
+  const corte = Math.min(inicio.byteLength, espaco);
+
+  dv.setUint32(mdatOff, corte - mdatOff);
+  const juntos = new Uint8Array(corte + moov.byteLength);
+  juntos.set(inicio.subarray(0, corte), 0);
+  juntos.set(moov, corte);
   return juntos;
 }
 
@@ -106,13 +114,25 @@ function base64(bytes: Uint8Array): string {
 
 // ---------- Gemini ----------
 
+/** O plano grátis do Gemini dá poucos pedidos por dia POR MODELO, por isso
+ *  usamos todos os modelos servíveis e rodamos entre eles. */
 const PREFERIDOS = [
   "gemini-3.6-flash",
   "gemini-3.5-flash",
   "gemini-3.7-flash",
   "gemini-3.8-flash",
   "gemini-flash-latest",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-lite-latest",
+  "gemini-2.5-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-omni-1.2-flash",
+  "gemini-omni-1.1-flash",
 ];
+
+/** Roda o ponto de partida entre pedidos, para espalhar a carga pelos modelos. */
+let proximo = 0;
 
 /** Lista de modelos a tentar, do melhor para o pior. A Google vai reformando
  *  modelos, por isso guardamos vários e saltamos para o seguinte em 404. */
@@ -124,12 +144,15 @@ async function modelosGemini(key: string): Promise<string[]> {
       .filter((m: { supportedGenerationMethods?: string[] }) =>
         (m.supportedGenerationMethods ?? []).includes("generateContent"))
       .map((m: { name: string }) => m.name.replace(/^models\//, ""))
-      .filter((n: string) => !/image|tts|lite|preview|omni|embedding|thinking/i.test(n));
+      .filter((n: string) => !/image|tts|embedding|thinking|2\.5-flash$/i.test(n));
   } catch { /* usa só os preferidos */ }
 
   const lista = PREFERIDOS.filter((p) => nomes.length === 0 || nomes.includes(p));
   for (const n of nomes) if (!lista.includes(n)) lista.push(n);
-  return lista.length > 0 ? lista.slice(0, 5) : ["gemini-flash-latest"];
+  if (lista.length === 0) return ["gemini-flash-lite-latest"];
+
+  const inicio = proximo++ % lista.length;
+  return [...lista.slice(inicio), ...lista.slice(0, inicio)];
 }
 
 async function pedirGemini(
@@ -139,7 +162,7 @@ async function pedirGemini(
 ): Promise<{ titulo: string; descricao: string } | Falha> {
   let modelo = modelos[0];
   let seguinte = 1;
-  for (let tentativa = 0; tentativa < 6; tentativa++) {
+  for (let tentativa = 0; tentativa < modelos.length + 1; tentativa++) {
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${key}`,
       {
@@ -157,21 +180,17 @@ async function pedirGemini(
       },
     );
 
-    // Modelo sobrecarregado, reformado ou recusado: passa ao seguinte da lista.
-    if ([404, 400, 503].includes(r.status) && seguinte < modelos.length) {
-      console.error("Gemini:", r.status, modelo);
-      modelo = modelos[seguinte++];
-      continue;
-    }
-    if (r.status === 429 || r.status === 503) {
-      if (tentativa === 0) {
-        await dormir(20000);
+    if (!r.ok) {
+      console.error("Gemini:", r.status, modelo, (await r.text()).slice(0, 200));
+      // 404/400 é do modelo ou do pedido, 503 é sobrecarga passageira:
+      // em qualquer dos casos vale a pena tentar outro modelo.
+      if ([404, 400, 429, 503].includes(r.status) && seguinte < modelos.length) {
+        modelo = modelos[seguinte++];
         continue;
       }
-      return "limite";
-    }
-    if (!r.ok) {
-      console.error("Gemini:", r.status, modelo, (await r.text()).slice(0, 300));
+      if (r.status === 429) return "limite";
+      if (r.status === 400) return "pedido_grande";
+      if (r.status === 503) return "sobrecarga";
       return "resposta";
     }
 
@@ -397,21 +416,27 @@ Título atual da aula: «${aula.titulo}»`;
     const bytes = await trechoDrive(dr);
     if (typeof bytes === "string") {
       resultado = bytes;
-    } else if (chaveGemini) {
-      // O Gemini ouve o vídeo e escreve o título numa só chamada.
-      resultado = await pedirGemini(chaveGemini, await modelosGemini(chaveGemini), [
-        { text: `${contexto}\n\nOuve o início desta aula e escreve o título e a descrição.` },
-        { inline_data: { mime_type: "video/mp4", data: base64(bytes) } },
-      ]);
     } else {
-      const t = await whisper(bytes, chaveGroq!);
-      if (typeof t === "string" && (t === "limite" || t === "audio")) resultado = t as Falha;
-      else {
-        resultado = await pedirGroq(
-          chaveGroq!,
-          corpo.modelo || (await modeloGroq(chaveGroq!)),
-          `${contexto}\nTranscrição do início do vídeo: «${t}»\n\nEscreve o título e a descrição.`,
-        );
+      // Primeiro o Gemini, que ouve o vídeo numa só chamada.
+      if (chaveGemini) {
+        resultado = await pedirGemini(chaveGemini, await modelosGemini(chaveGemini), [
+          { text: `${contexto}\n\nOuve o início desta aula e escreve o título e a descrição.` },
+          { inline_data: { mime_type: "video/mp4", data: base64(bytes) } },
+        ]);
+      }
+      // Se o Gemini falhar, o Groq transcreve e escreve. Só falha se ambos falharem.
+      if (chaveGroq && (resultado === null || typeof resultado === "string")) {
+        const t = await whisper(bytes, chaveGroq);
+        if (t !== "limite" && t !== "audio") {
+          const r2 = await pedirGroq(
+            chaveGroq,
+            await modeloGroq(chaveGroq),
+            `${contexto}\nTranscrição do início do vídeo: «${t}»\n\nEscreve o título e a descrição.`,
+          );
+          if (typeof r2 !== "string" || resultado === null) resultado = r2;
+        } else if (resultado === null) {
+          resultado = t as Falha;
+        }
       }
     }
   } else {
@@ -420,9 +445,13 @@ Título atual da aula: «${aula.titulo}»`;
       resultado = "audio";
     } else {
       const prompt = `${contexto}\n${legenda ? `Transcrição do início do vídeo: «${legenda}»` : "Sem transcrição disponível."}\n\nEscreve o título e a descrição.`;
-      resultado = chaveGemini
-        ? await pedirGemini(chaveGemini, await modelosGemini(chaveGemini), [{ text: prompt }])
-        : await pedirGroq(chaveGroq!, corpo.modelo || (await modeloGroq(chaveGroq!)), prompt);
+      if (chaveGemini) {
+        resultado = await pedirGemini(chaveGemini, await modelosGemini(chaveGemini), [{ text: prompt }]);
+      }
+      if (chaveGroq && (resultado === null || typeof resultado === "string")) {
+        const r2 = await pedirGroq(chaveGroq, await modeloGroq(chaveGroq), prompt);
+        if (typeof r2 !== "string" || resultado === null) resultado = r2;
+      }
     }
   }
 
