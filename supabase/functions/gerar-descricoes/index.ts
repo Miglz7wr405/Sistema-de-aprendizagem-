@@ -381,6 +381,129 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (corpo.acao === "organizar") {
+    if (corpo.modo === "aplicar") {
+      const linhas = corpo.resultado as Array<{ id: string; modulo: string; ordem: number }>;
+      await Promise.all(
+        linhas.map((l) =>
+          admin.from("aulas").update({ modulo: l.modulo, ordem: l.ordem }).eq("id", l.id),
+        ),
+      );
+      return json({ ok: true, total: linhas.length });
+    }
+
+    const { data: aulasRaw } = await admin
+      .from("aulas")
+      .select("id, titulo, ordem")
+      .eq("curso_id", corpo.curso_id)
+      .order("ordem");
+    if (!aulasRaw?.length) return json({ erro: "Este curso não tem aulas." }, 400);
+
+    const { data: cursoRaw } = await admin
+      .from("cursos")
+      .select("titulo")
+      .eq("id", corpo.curso_id)
+      .maybeSingle();
+
+    const listagem = aulasRaw.map((a, i) => `${i + 1}. [${a.id}] ${a.titulo}`).join("\n");
+    const instrucao = `Tens uma lista de ${aulasRaw.length} aulas do curso "${cursoRaw?.titulo ?? ""}".
+Analisa os títulos e organiza-as em módulos temáticos lógicos.
+Regras:
+- Dá um nome claro a cada módulo (ex.: "Módulo 1 — Introdução")
+- Dentro de cada módulo, ordena as aulas da mais básica para a mais avançada
+- Mantém as aulas juntas quando os títulos sugerem sequência (Parte 1, Parte 2...)
+- Usa o mínimo de módulos necessários (evita módulos com 1 aula)
+- Responde APENAS com JSON no formato: {"aulas":[{"id":"...","modulo":"...","ordem":0},...]}
+
+Aulas:
+${listagem}`;
+
+    type AulaOrg = { id: string; modulo: string; ordem: number };
+
+    function extrairOrganizacao(texto: string): AulaOrg[] | null {
+      const m = texto.match(/\{[\s\S]*\}/);
+      if (!m) return null;
+      try {
+        const obj = JSON.parse(m[0]);
+        if (!Array.isArray(obj.aulas)) return null;
+        return obj.aulas.filter(
+          (a: unknown) =>
+            typeof a === "object" &&
+            a !== null &&
+            "id" in a &&
+            "modulo" in a &&
+            "ordem" in a,
+        ) as AulaOrg[];
+      } catch {
+        return null;
+      }
+    }
+
+    let proposta: AulaOrg[] | null = null;
+
+    if (chaveGemini) {
+      const modelos = await modelosGemini(chaveGemini);
+      let modelo = modelos[0];
+      let seguinte = 1;
+      for (let t = 0; t < modelos.length && !proposta; t++) {
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${chaveGemini}`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: instrucao }] }],
+              generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 4096,
+                responseMimeType: "application/json",
+              },
+            }),
+          },
+        );
+        if (!r.ok) {
+          console.error("Gemini organizar:", r.status, modelo);
+          if ([404, 400, 429, 503].includes(r.status) && seguinte < modelos.length) {
+            modelo = modelos[seguinte++];
+            continue;
+          }
+          break;
+        }
+        const dados = await r.json();
+        const texto = (dados.candidates?.[0]?.content?.parts ?? [])
+          .map((p: { text?: string }) => p.text ?? "")
+          .join("");
+        proposta = extrairOrganizacao(texto);
+      }
+    }
+
+    if (!proposta && chaveGroq) {
+      const modelo = await modeloGroq(chaveGroq);
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${chaveGroq}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          model: modelo,
+          max_tokens: 4096,
+          temperature: 0.2,
+          messages: [{ role: "user", content: instrucao }],
+        }),
+      });
+      if (r.ok) {
+        const texto = (await r.json()).choices?.[0]?.message?.content ?? "";
+        proposta = extrairOrganizacao(texto);
+      }
+    }
+
+    if (!proposta) return json({ ok: false, motivo: "resposta" });
+
+    const aulasComTitulo = proposta.map((p) => ({
+      ...p,
+      titulo: aulasRaw.find((a) => a.id === p.id)?.titulo ?? "",
+    }));
+    return json({ ok: true, aulas: aulasComTitulo });
+  }
+
   if (corpo.acao !== "uma") return json({ erro: "Ação inválida." }, 400);
 
   const { data: aula } = await admin

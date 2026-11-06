@@ -35,6 +35,7 @@ import { BotaoDrive, BotaoImportarPasta } from "../components/DrivePicker";
 import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
 import { BotaoImportarVimeo, type VideoVimeo } from "../components/VimeoImporter";
 import { BotaoGerarDescricoes } from "../components/GerarDescricoesIA";
+import { OrganizarAulasIA } from "../components/OrganizarAulasIA";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -871,10 +872,16 @@ export default function ConteudoPage() {
           ) : (
             <>
             {seccao && (
-              <div className="mb-2">
+              <div className="mb-2 space-y-1.5">
                 <BotaoGerarDescricoes
                   curso={curso}
                   seccao={seccao}
+                  aulas={aulas}
+                  onAplicar={refetch}
+                  disabled={busy}
+                />
+                <OrganizarAulasIA
+                  curso={curso}
                   aulas={aulas}
                   onAplicar={refetch}
                   disabled={busy}
