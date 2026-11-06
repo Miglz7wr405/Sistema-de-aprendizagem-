@@ -106,28 +106,40 @@ function base64(bytes: Uint8Array): string {
 
 // ---------- Gemini ----------
 
-async function modeloGemini(key: string): Promise<string> {
+const PREFERIDOS = [
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3.7-flash",
+  "gemini-3.8-flash",
+  "gemini-flash-latest",
+];
+
+/** Lista de modelos a tentar, do melhor para o pior. A Google vai reformando
+ *  modelos, por isso guardamos vários e saltamos para o seguinte em 404. */
+async function modelosGemini(key: string): Promise<string[]> {
+  let nomes: string[] = [];
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-    const nomes: string[] = ((await r.json()).models ?? [])
+    nomes = ((await r.json()).models ?? [])
       .filter((m: { supportedGenerationMethods?: string[] }) =>
         (m.supportedGenerationMethods ?? []).includes("generateContent"))
       .map((m: { name: string }) => m.name.replace(/^models\//, ""))
-      .filter((n: string) => !/thinking|image|tts|embedding|vision-latest|exp-/i.test(n));
-    for (const p of ["gemini-2.0-flash-001", "gemini-2.0-flash", "gemini-2.5-flash", "flash"]) {
-      const f = nomes.find((n: string) => n === p) ?? nomes.find((n: string) => n.includes(p));
-      if (f) return f;
-    }
-  } catch { /* fica com o valor por omissão */ }
-  return "gemini-2.0-flash";
+      .filter((n: string) => !/image|tts|lite|preview|omni|embedding|thinking/i.test(n));
+  } catch { /* usa só os preferidos */ }
+
+  const lista = PREFERIDOS.filter((p) => nomes.length === 0 || nomes.includes(p));
+  for (const n of nomes) if (!lista.includes(n)) lista.push(n);
+  return lista.length > 0 ? lista.slice(0, 5) : ["gemini-flash-latest"];
 }
 
 async function pedirGemini(
   key: string,
-  modelo: string,
+  modelos: string[],
   partes: unknown[],
 ): Promise<{ titulo: string; descricao: string } | Falha> {
-  for (let tentativa = 0; tentativa < 2; tentativa++) {
+  let modelo = modelos[0];
+  let seguinte = 1;
+  for (let tentativa = 0; tentativa < 6; tentativa++) {
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${key}`,
       {
@@ -145,6 +157,12 @@ async function pedirGemini(
       },
     );
 
+    // Modelo sobrecarregado, reformado ou recusado: passa ao seguinte da lista.
+    if ([404, 400, 503].includes(r.status) && seguinte < modelos.length) {
+      console.error("Gemini:", r.status, modelo);
+      modelo = modelos[seguinte++];
+      continue;
+    }
     if (r.status === 429 || r.status === 503) {
       if (tentativa === 0) {
         await dormir(20000);
@@ -381,8 +399,7 @@ Título atual da aula: «${aula.titulo}»`;
       resultado = bytes;
     } else if (chaveGemini) {
       // O Gemini ouve o vídeo e escreve o título numa só chamada.
-      const modelo = corpo.modelo || (await modeloGemini(chaveGemini));
-      resultado = await pedirGemini(chaveGemini, modelo, [
+      resultado = await pedirGemini(chaveGemini, await modelosGemini(chaveGemini), [
         { text: `${contexto}\n\nOuve o início desta aula e escreve o título e a descrição.` },
         { inline_data: { mime_type: "video/mp4", data: base64(bytes) } },
       ]);
@@ -404,7 +421,7 @@ Título atual da aula: «${aula.titulo}»`;
     } else {
       const prompt = `${contexto}\n${legenda ? `Transcrição do início do vídeo: «${legenda}»` : "Sem transcrição disponível."}\n\nEscreve o título e a descrição.`;
       resultado = chaveGemini
-        ? await pedirGemini(chaveGemini, corpo.modelo || (await modeloGemini(chaveGemini)), [{ text: prompt }])
+        ? await pedirGemini(chaveGemini, await modelosGemini(chaveGemini), [{ text: prompt }])
         : await pedirGroq(chaveGroq!, corpo.modelo || (await modeloGroq(chaveGroq!)), prompt);
     }
   }
