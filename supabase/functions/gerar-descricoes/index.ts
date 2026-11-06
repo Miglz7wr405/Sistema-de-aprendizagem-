@@ -1,11 +1,92 @@
 import { chamador, clienteAdmin, cors, json, segredo } from "../_shared/comum.ts";
 
+const TRECHO = 6 * 1024 * 1024;
+
 function idYouTube(url: string): string | null {
   return url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/)?.[1] ?? null;
 }
 
 function idVimeo(url: string): string | null {
   return url.match(/vimeo\.com\/(?:video\/)?(\d+)/)?.[1] ?? null;
+}
+
+function idDrive(url: string): string | null {
+  return url.match(/\/d\/([a-zA-Z0-9_-]{20,})/)?.[1] ?? url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/)?.[1] ?? null;
+}
+
+async function faixa(url: string, de: number, ate?: number): Promise<Uint8Array | "bloqueado" | null> {
+  const r = await fetch(url, { headers: { Range: `bytes=${de}-${ate ?? ""}` }, redirect: "follow" });
+  const ct = r.headers.get("content-type") ?? "";
+  if (ct.includes("text/html")) {
+    await r.body?.cancel();
+    return "bloqueado";
+  }
+  if (!r.ok && r.status !== 206) {
+    await r.body?.cancel();
+    return null;
+  }
+  return new Uint8Array(await r.arrayBuffer());
+}
+
+/**
+ * Os MP4 do Drive têm o índice (moov) no fim, por isso um pedaço do início
+ * sozinho não é um ficheiro válido. Juntamos o índice e corrigimos o tamanho
+ * declarado do mdat, para não descarregar o vídeo inteiro.
+ */
+async function trechoDrive(fileId: string): Promise<Uint8Array | "bloqueado" | null> {
+  const url = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
+
+  const inicio = await faixa(url, 0, TRECHO - 1);
+  if (inicio === "bloqueado" || inicio === null) return inicio;
+  if (inicio.byteLength < 100000) return null;
+
+  const dv = new DataView(inicio.buffer);
+  let off = 0;
+  let mdatOff = -1;
+  let mdatFim = -1;
+  while (off + 8 <= inicio.byteLength) {
+    let size = dv.getUint32(off);
+    const tipo = String.fromCharCode(...inicio.slice(off + 4, off + 8));
+    if (size === 1) size = dv.getUint32(off + 8) * 4294967296 + dv.getUint32(off + 12);
+    if (tipo === "moov") return inicio;
+    if (tipo === "mdat") {
+      mdatOff = off;
+      mdatFim = off + size;
+      break;
+    }
+    if (size < 8) break;
+    off += size;
+  }
+
+  if (mdatOff < 0 || mdatFim <= inicio.byteLength) return inicio;
+
+  const moov = await faixa(url, mdatFim);
+  if (moov === "bloqueado" || moov === null) return moov === "bloqueado" ? "bloqueado" : inicio;
+
+  dv.setUint32(mdatOff, inicio.byteLength - mdatOff);
+  const juntos = new Uint8Array(inicio.byteLength + moov.byteLength);
+  juntos.set(inicio, 0);
+  juntos.set(moov, inicio.byteLength);
+  return juntos;
+}
+
+async function whisper(bytes: Uint8Array, key: string): Promise<string | "limite" | null> {
+  const form = new FormData();
+  form.append("file", new Blob([bytes], { type: "video/mp4" }), "trecho.mp4");
+  form.append("model", "whisper-large-v3-turbo");
+  form.append("language", "pt");
+  form.append("response_format", "text");
+  const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+  });
+  if (r.status === 429) return "limite";
+  if (!r.ok) {
+    console.error("Whisper:", r.status, (await r.text()).slice(0, 200));
+    return null;
+  }
+  return (await r.text()).trim().slice(0, 1200) || null;
 }
 
 async function transcricaoYouTube(videoId: string): Promise<string | null> {
@@ -27,14 +108,13 @@ async function transcricaoYouTube(videoId: string): Promise<string | null> {
     if (!track?.baseUrl) return null;
     const tr = await fetch(track.baseUrl + (track.baseUrl.includes("?") ? "&" : "?") + "fmt=json3", { signal: ctrl.signal });
     if (!tr.ok) return null;
-    const data = await tr.json();
     const linhas: string[] = [];
-    for (const ev of data.events ?? []) {
+    for (const ev of (await tr.json()).events ?? []) {
       if ((ev.tStartMs || 0) / 1000 > 60) break;
       const txt = (ev.segs ?? []).map((s: { utf8?: string }) => s.utf8 ?? "").join("");
       if (txt.trim()) linhas.push(txt.trim());
     }
-    return linhas.join(" ").replace(/\s+/g, " ").trim().slice(0, 900) || null;
+    return linhas.join(" ").replace(/\s+/g, " ").trim().slice(0, 1200) || null;
   } catch {
     return null;
   } finally {
@@ -60,7 +140,7 @@ async function transcricaoVimeo(videoId: string): Promise<string | null> {
       if (+tm[1] * 3600 + +tm[2] * 60 + +tm[3] > 60) break;
       linhas.push(...bloco.split("\n").filter((l) => !l.includes("-->") && !/^\d+$/.test(l.trim()) && l.trim()));
     }
-    return linhas.join(" ").replace(/\s+/g, " ").trim().slice(0, 900) || null;
+    return linhas.join(" ").replace(/\s+/g, " ").trim().slice(0, 1200) || null;
   } catch {
     return null;
   }
@@ -77,7 +157,7 @@ async function modeloTexto(key: string): Promise<string> {
       if (f) return f;
     }
     if (ids[0]) return ids[0];
-  } catch { /* ignora */ }
+  } catch { /* fica com o valor por omissão */ }
   return "openai/gpt-oss-120b";
 }
 
@@ -104,31 +184,8 @@ Deno.serve(async (req) => {
   const apiKey = await segredo("GROQ_API_KEY");
   if (!apiKey) return json({ erro: "Falta a chave Groq. Cola-a em Administração > Chaves de API." }, 503);
 
-  // 1) Transcrever um pedaço de vídeo enviado pelo browser (Google Drive).
-  if ((req.headers.get("content-type") ?? "").includes("multipart/form-data")) {
-    const f = (await req.formData()).get("ficheiro");
-    if (!(f instanceof File)) return json({ erro: "Ficheiro em falta." }, 400);
-    const form = new FormData();
-    form.append("file", f, "trecho.mp4");
-    form.append("model", "whisper-large-v3-turbo");
-    form.append("language", "pt");
-    form.append("response_format", "text");
-    const wr = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: form,
-    });
-    if (!wr.ok) {
-      const detalhe = (await wr.text()).slice(0, 200);
-      console.error("Whisper:", wr.status, detalhe);
-      return json({ ok: false, motivo: wr.status === 429 ? "limite" : "audio", detalhe }, 200);
-    }
-    return json({ ok: true, texto: (await wr.text()).trim().slice(0, 900) });
-  }
-
   const corpo = await req.json();
 
-  // 2) Listar as aulas a tratar.
   if (corpo.acao === "listar") {
     const { data } = await admin
       .from("aulas")
@@ -137,47 +194,56 @@ Deno.serve(async (req) => {
       .order("ordem")
       .order("created_at");
     const todas = data ?? [];
-    const aulas = corpo.sobrescrever ? todas : todas.filter((a) => !a.descricao?.trim());
-    return json({ ok: true, aulas });
+    return json({ ok: true, aulas: corpo.sobrescrever ? todas : todas.filter((a) => !a.descricao?.trim()) });
   }
 
-  // 3) Gerar e gravar o título/descrição de UMA aula.
-  if (corpo.acao === "uma") {
-    const { data: aula } = await admin
-      .from("aulas")
-      .select("id, titulo, url, modulo, curso_id")
-      .eq("id", corpo.aula_id)
-      .maybeSingle();
-    if (!aula) return json({ erro: "Aula não encontrada." }, 404);
+  if (corpo.acao !== "uma") return json({ erro: "Ação inválida." }, 400);
 
-    const { data: curso } = await admin
-      .from("cursos")
-      .select("titulo, descricao, nivel, seccao_id")
-      .eq("id", aula.curso_id)
-      .maybeSingle();
-    const { data: seccao } = await admin
-      .from("seccoes")
-      .select("titulo")
-      .eq("id", curso?.seccao_id)
-      .maybeSingle();
+  const { data: aula } = await admin
+    .from("aulas")
+    .select("id, titulo, url, modulo, curso_id")
+    .eq("id", corpo.aula_id)
+    .maybeSingle();
+  if (!aula) return json({ erro: "Aula não encontrada." }, 404);
 
-    let transcricao: string | null = typeof corpo.transcricao === "string" && corpo.transcricao.trim()
-      ? corpo.transcricao.trim().slice(0, 900)
-      : null;
+  const { data: curso } = await admin
+    .from("cursos")
+    .select("titulo, descricao, nivel, seccao_id")
+    .eq("id", aula.curso_id)
+    .maybeSingle();
+  const { data: seccao } = curso?.seccao_id
+    ? await admin.from("seccoes").select("titulo").eq("id", curso.seccao_id).maybeSingle()
+    : { data: null };
 
-    if (!transcricao && aula.url) {
-      const yt = idYouTube(aula.url);
-      const vi = idVimeo(aula.url);
-      if (yt) transcricao = await transcricaoYouTube(yt);
-      else if (vi) transcricao = await transcricaoVimeo(vi);
+  let transcricao: string | null = null;
+  let motivo: string | null = null;
+
+  if (aula.url) {
+    const yt = idYouTube(aula.url);
+    const vi = idVimeo(aula.url);
+    const dr = idDrive(aula.url);
+    if (yt) {
+      transcricao = await transcricaoYouTube(yt);
+    } else if (vi) {
+      transcricao = await transcricaoVimeo(vi);
+    } else if (dr) {
+      const bytes = await trechoDrive(dr);
+      if (bytes === "bloqueado") motivo = "permissao";
+      else if (bytes === null) motivo = "audio";
+      else {
+        const t = await whisper(bytes, apiKey);
+        if (t === "limite") return json({ ok: false, motivo: "limite" });
+        if (t) transcricao = t;
+        else motivo = "audio";
+      }
     }
+  }
 
-    const generico = /^\s*aula\s*\d+\s*$/i.test(aula.titulo);
-    if (!transcricao && generico) {
-      return json({ ok: false, motivo: "sem_conteudo" }, 200);
-    }
+  if (!transcricao && /^\s*aula\s*\d+\s*$/i.test(aula.titulo)) {
+    return json({ ok: false, motivo: motivo ?? "sem_conteudo" });
+  }
 
-    const prompt = `Curso: ${curso?.titulo ?? "—"}${seccao ? ` (secção ${seccao.titulo})` : ""}
+  const prompt = `Curso: ${curso?.titulo ?? "—"}${seccao ? ` (secção ${seccao.titulo})` : ""}
 Nível: ${curso?.nivel ?? "—"}
 ${curso?.descricao ? `Sobre o curso: ${curso.descricao}` : ""}
 ${aula.modulo ? `Módulo: ${aula.modulo}` : ""}
@@ -186,54 +252,41 @@ ${transcricao ? `Transcrição do início do vídeo: «${transcricao}»` : "Sem 
 
 Escreve o título e a descrição desta aula.`;
 
-    const modelo = corpo.modelo || (await modeloTexto(apiKey));
-    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: modelo,
-        max_tokens: 500,
-        temperature: 0.4,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SISTEMA },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
+  const modelo = await modeloTexto(apiKey);
+  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: modelo,
+      max_tokens: 500,
+      temperature: 0.4,
+      response_format: { type: "json_object" },
+      messages: [{ role: "system", content: SISTEMA }, { role: "user", content: prompt }],
+    }),
+  });
 
-    if (!r.ok) {
-      const detalhe = (await r.text()).slice(0, 200);
-      console.error("Groq:", r.status, modelo, detalhe);
-      if (r.status === 401) return json({ erro: "Chave Groq inválida. Verifica-a em Chaves de API." }, 401);
-      if (r.status === 429) return json({ ok: false, motivo: "limite" }, 200);
-      return json({ erro: `Erro da IA (${r.status}).` }, 502);
-    }
-
-    const texto = (await r.json()).choices?.[0]?.message?.content ?? "";
-    const m = texto.match(/\{[\s\S]*\}/);
-    if (!m) {
-      console.error("Resposta inesperada:", texto.slice(0, 300));
-      return json({ ok: false, motivo: "resposta" }, 200);
-    }
-
-    let gerado: { titulo?: string; descricao?: string };
-    try {
-      gerado = JSON.parse(m[0]);
-    } catch {
-      return json({ ok: false, motivo: "resposta" }, 200);
-    }
-    if (!gerado.titulo?.trim() || !gerado.descricao?.trim()) {
-      return json({ ok: false, motivo: "resposta" }, 200);
-    }
-
-    const titulo = gerado.titulo.trim().slice(0, 80);
-    const descricao = gerado.descricao.trim();
-    const { error } = await admin.from("aulas").update({ titulo, descricao }).eq("id", aula.id);
-    if (error) return json({ erro: "Não foi possível gravar a aula." }, 500);
-
-    return json({ ok: true, titulo, descricao, modelo, com_transcricao: !!transcricao });
+  if (!r.ok) {
+    console.error("Groq:", r.status, modelo, (await r.text()).slice(0, 200));
+    if (r.status === 401) return json({ erro: "Chave Groq inválida. Verifica-a em Chaves de API." }, 401);
+    if (r.status === 429) return json({ ok: false, motivo: "limite" });
+    return json({ erro: `Erro da IA (${r.status}).` }, 502);
   }
 
-  return json({ erro: "Ação inválida." }, 400);
+  const m = ((await r.json()).choices?.[0]?.message?.content ?? "").match(/\{[\s\S]*\}/);
+  if (!m) return json({ ok: false, motivo: "resposta" });
+
+  let gerado: { titulo?: string; descricao?: string };
+  try {
+    gerado = JSON.parse(m[0]);
+  } catch {
+    return json({ ok: false, motivo: "resposta" });
+  }
+  if (!gerado.titulo?.trim() || !gerado.descricao?.trim()) return json({ ok: false, motivo: "resposta" });
+
+  const titulo = gerado.titulo.trim().slice(0, 80);
+  const descricao = gerado.descricao.trim();
+  const { error } = await admin.from("aulas").update({ titulo, descricao }).eq("id", aula.id);
+  if (error) return json({ erro: "Não foi possível gravar a aula." }, 500);
+
+  return json({ ok: true, titulo, descricao, com_transcricao: !!transcricao });
 });

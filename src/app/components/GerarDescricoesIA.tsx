@@ -4,8 +4,6 @@ import { toast } from "sonner";
 
 import type { Aula, Curso, Seccao } from "@/lib/types";
 import { chamarFuncao } from "@/lib/supabase";
-import { carregarGis, obterTokenOAuth } from "@/lib/google-picker";
-import { driveId } from "@/lib/video";
 import { Modal } from "./Modal";
 import { Button } from "./primitives";
 
@@ -70,19 +68,6 @@ export function BotaoGerarDescricoes({
     setFeitas(0);
     setTotal(0);
     parar.current = false;
-    carregarGis().catch(() => {});
-  }
-
-  async function trechoDoDrive(url: string, token: string): Promise<Blob | "permissao" | null> {
-    const id = driveId(url);
-    if (!id) return null;
-    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, {
-      headers: { Authorization: `Bearer ${token}`, Range: `bytes=0-${6 * MB - 1}` },
-    });
-    if (r.status === 403 || r.status === 401) return "permissao";
-    if (!r.ok && r.status !== 206) return null;
-    const b = await r.blob();
-    return b.size > 20000 ? b : null;
   }
 
   async function correr() {
@@ -106,49 +91,19 @@ export function BotaoGerarDescricoes({
         return;
       }
 
-      let token: string | null = null;
-      if (alvo.some((a) => a.url && driveId(a.url))) {
-        token = await obterTokenOAuth();
-      }
-
-      let semPermissao = 0;
       for (const a of alvo) {
         if (parar.current) break;
-
-        let transcricao: string | undefined;
-        let motivoLeitura: string | undefined;
-
-        if (token && a.url && driveId(a.url)) {
-          try {
-            const trecho = await trechoDoDrive(a.url, token);
-            if (trecho === "permissao") {
-              motivoLeitura = "permissao";
-              semPermissao += 1;
-            } else if (trecho) {
-              const form = new FormData();
-              form.append("ficheiro", trecho, "trecho.mp4");
-              const t = await chamarFuncao<{ ok: boolean; texto?: string; motivo?: string }>(
-                "gerar-descricoes",
-                form,
-              );
-              if (t.ok && t.texto) transcricao = t.texto;
-              else motivoLeitura = t.motivo ?? "audio";
-            }
-          } catch {
-            motivoLeitura = "audio";
-          }
-        }
 
         try {
           const r = await chamarFuncao<{ ok: boolean; titulo?: string; motivo?: string }>(
             "gerar-descricoes",
-            { acao: "uma", aula_id: a.id, transcricao },
+            { acao: "uma", aula_id: a.id },
           );
           setLinhas((prev) => [
             ...prev,
             r.ok && r.titulo
               ? { id: a.id, original: a.titulo, estado: "feito", titulo: r.titulo }
-              : { id: a.id, original: a.titulo, estado: "falhou", motivo: motivoLeitura ?? r.motivo },
+              : { id: a.id, original: a.titulo, estado: "falhou", motivo: r.motivo },
           ]);
         } catch (e) {
           setLinhas((prev) => [
@@ -165,10 +120,8 @@ export function BotaoGerarDescricoes({
         setFeitas((n) => n + 1);
       }
 
-      if (semPermissao > 0 && semPermissao === alvo.length) {
-        setErro(
-          "O Google não deixou ler nenhum vídeo. Estes ficheiros têm o download bloqueado, por isso só a conta dona do Drive os consegue ler. Entra com essa conta e tenta outra vez.",
-        );
+      if (parar.current) {
+        setErro("Parado por ti. O que já foi gravado ficou guardado.");
       }
       setEstado("fim");
       onAplicar();
@@ -229,9 +182,8 @@ export function BotaoGerarDescricoes({
             )}
 
             <p className="text-xs text-text-low">
-              A IA lê o início de cada vídeo e grava o título e a descrição logo a seguir, uma aula de cada
-              vez. Para os vídeos do Google Drive vai pedir-te autorização da tua conta Google. Nada é
-              descarregado nem partilhado.
+              A IA lê o início de cada vídeo e grava o título e a descrição logo a seguir, uma aula de
+              cada vez. Podes parar a meio: o que já foi gravado fica.
             </p>
 
             <div className="flex justify-end gap-2">
