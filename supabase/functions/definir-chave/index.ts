@@ -1,6 +1,6 @@
 import { chamador, clienteAdmin, cors, json, segredo } from "../_shared/comum.ts";
 
-const PERMITIDOS = ["GROQ_API_KEY", "VIMEO_ACCESS_TOKEN"];
+const PERMITIDOS = ["GEMINI_API_KEY", "GROQ_API_KEY", "VIMEO_ACCESS_TOKEN"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });

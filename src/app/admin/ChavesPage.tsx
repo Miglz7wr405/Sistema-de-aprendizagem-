@@ -9,9 +9,14 @@ import { useData } from "../use-data";
 
 const CHAVES = [
   {
+    nome: "GEMINI_API_KEY",
+    titulo: "Gemini (recomendado)",
+    ajuda: "Motor principal: ouve o vídeo e escreve o título numa só vez. Cria a chave em aistudio.google.com, é grátis.",
+  },
+  {
     nome: "GROQ_API_KEY",
-    titulo: "Groq (IA grátis)",
-    ajuda: "Usada para ler os vídeos e gerar títulos e descrições. Cria em console.groq.com.",
+    titulo: "Groq (alternativa)",
+    ajuda: "Só é usada se não houver chave do Gemini. Cria em console.groq.com.",
   },
   {
     nome: "VIMEO_ACCESS_TOKEN",

@@ -25,8 +25,9 @@ type Linha = {
 
 const MOTIVOS: Record<string, string> = {
   sem_conteudo: "não foi possível ler o vídeo",
-  permissao: "sem permissão para ler o vídeo no Drive",
-  audio: "o vídeo não deu para transcrever",
+  virus_scan: "o Drive pediu confirmação de antivírus",
+  permissao: "o download está bloqueado neste ficheiro",
+  audio: "o vídeo não deu para ler",
   limite: "limite da IA atingido",
   resposta: "a IA não respondeu em condições",
 };
@@ -53,6 +54,7 @@ export function BotaoGerarDescricoes({
   const [linhas, setLinhas] = useState<Linha[]>([]);
   const [feitas, setFeitas] = useState(0);
   const [total, setTotal] = useState(0);
+  const [motor, setMotor] = useState("");
   const parar = useRef(false);
 
   const semDescricao = aulas.filter((a) => !a.descricao?.trim()).length;
@@ -70,7 +72,7 @@ export function BotaoGerarDescricoes({
     parar.current = false;
   }
 
-  async function correr() {
+  async function correr(so?: string[]) {
     setEstado("a-correr");
     setErro(null);
     setLinhas([]);
@@ -78,12 +80,13 @@ export function BotaoGerarDescricoes({
     parar.current = false;
 
     try {
-      const lista = await chamarFuncao<{ aulas: AulaAlvo[] }>("gerar-descricoes", {
+      const lista = await chamarFuncao<{ aulas: AulaAlvo[]; motor?: string }>("gerar-descricoes", {
         acao: "listar",
         curso_id: curso.id,
-        sobrescrever,
+        sobrescrever: sobrescrever || !!so,
       });
-      const alvo = lista.aulas;
+      setMotor(lista.motor ?? "");
+      const alvo = so ? lista.aulas.filter((a) => so.includes(a.id)) : lista.aulas;
       setTotal(alvo.length);
       if (alvo.length === 0) {
         setErro("Não há aulas para tratar. Liga 'Sobrescrever' para refazer as que já têm descrição.");
@@ -190,7 +193,7 @@ export function BotaoGerarDescricoes({
               <Button variant="outline" onClick={() => setAberto(false)}>
                 Cancelar
               </Button>
-              <Button onClick={correr} disabled={aGerar === 0}>
+              <Button onClick={() => correr()} disabled={aGerar === 0}>
                 <Sparkles className="size-4" />
                 Começar ({aGerar} aula{aGerar !== 1 ? "s" : ""})
               </Button>
@@ -207,6 +210,7 @@ export function BotaoGerarDescricoes({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-text-hi">
                   {estado === "a-correr" ? `A ler aula ${Math.min(feitas + 1, total)} de ${total}` : "Terminado"}
+                  {motor && <span className="ml-1.5 text-xs font-normal text-text-low">· {motor}</span>}
                 </p>
                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-base">
                   <div
@@ -256,7 +260,17 @@ export function BotaoGerarDescricoes({
                   Parar
                 </Button>
               ) : (
-                <Button onClick={() => setAberto(false)}>Fechar</Button>
+                <>
+                  {falhouN > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => correr(linhas.filter((l) => l.estado === "falhou").map((l) => l.id))}
+                    >
+                      Repetir as {falhouN} falhadas
+                    </Button>
+                  )}
+                  <Button onClick={() => setAberto(false)}>Fechar</Button>
+                </>
               )}
             </div>
           </div>
