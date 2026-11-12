@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { toast } from "sonner";
 
 import { supabase } from "@/lib/supabase";
 import { Perfis } from "@/lib/db";
+import { iniciarHeartbeat, limparSessaoLocal, registarSessaoAtual } from "@/lib/sessao";
 import type { Perfil } from "@/lib/types";
 
 type AuthCtx = {
@@ -58,12 +60,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Fora do callback para não bloquear o cliente do Supabase.
         setTimeout(() => carregarPerfil(s), 0);
       }
+      if (evento === "SIGNED_IN") {
+        // Toma conta desta sessão — qualquer outra ligação com a mesma conta é expulsa.
+        setTimeout(() => registarSessaoAtual(), 0);
+      }
+      if (evento === "SIGNED_OUT") limparSessaoLocal();
     });
     return () => {
       ativo = false;
       sub.subscription.unsubscribe();
     };
   }, [carregarPerfil]);
+
+  // Sessão única: de 30 em 30s confirma que ninguém entrou noutro sítio com a mesma conta.
+  useEffect(() => {
+    if (!sessao) return;
+    // Primeiro arranque pós-reload: se ainda não há id local, regista agora.
+    (async () => {
+      const temLocal = (() => {
+        try {
+          return Boolean(localStorage.getItem("insight-academia-sessao"));
+        } catch {
+          return false;
+        }
+      })();
+      if (!temLocal) await registarSessaoAtual();
+    })();
+    const parar = iniciarHeartbeat(async () => {
+      toast.error("A tua conta foi aberta noutro dispositivo. Vais ter de entrar outra vez.", {
+        duration: 8000,
+      });
+      limparSessaoLocal();
+      await supabase.auth.signOut();
+    });
+    return parar;
+  }, [sessao]);
 
   // Se o admin aprovar/bloquear enquanto a pessoa está na app, o estado muda sozinho.
   useEffect(() => {

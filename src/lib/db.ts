@@ -6,6 +6,7 @@ import type {
   Grupo,
   Membro,
   Mensagem,
+  Modulo,
   Notificacao,
   Perfil,
   Pergunta,
@@ -158,6 +159,19 @@ export const Aulas = {
     await Promise.all(
       aulas.map((a, i) => (a.ordem === i ? null : Aulas.atualizar(a.id, { ordem: i }))),
     );
+  },
+};
+
+export const Modulos = {
+  async doCurso(cursoId: string) {
+    const { data, error } = await supabase
+      .from("modulos")
+      .select("*")
+      .eq("curso_id", cursoId)
+      .order("ordem")
+      .order("created_at");
+    falhar(error);
+    return (data ?? []) as Modulo[];
   },
 };
 

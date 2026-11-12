@@ -46,12 +46,22 @@ export type Curso = {
 export type Aula = {
   id: string;
   curso_id: string;
+  modulo_id: string | null;
   titulo: string;
   descricao: string | null;
   tipo: TipoAula;
   url: string | null;
   storage_path: string | null;
   duracao: string | null;
+  ordem: number;
+  created_at: string;
+};
+
+export type Modulo = {
+  id: string;
+  curso_id: string;
+  titulo: string;
+  descricao: string | null;
   ordem: number;
   created_at: string;
 };

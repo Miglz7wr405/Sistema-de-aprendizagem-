@@ -29,6 +29,8 @@ import { AvisoDrivePrivado, useEstadoDrive } from "../components/Drive";
 import { BotaoDrive, BotaoImportarPasta } from "../components/DrivePicker";
 import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
 import { BotaoImportarVimeo, type VideoVimeo } from "../components/VimeoImporter";
+import { BotaoCorrigirPrivacidadeVimeo } from "../components/CorrigirPrivacidadeVimeo";
+import { BotaoOrganizarAulas } from "../components/OrganizarAulas";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -694,12 +696,21 @@ export default function ConteudoPage() {
           titulo={curso ? `Aulas · ${curso.titulo}` : "Aulas"}
           acao={
             curso && (
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 <Link to={`/curso/${curso.id}`} title="Ver como aluno">
                   <Button variant="outline" className="h-8 px-2.5">
                     <ExternalLink className="size-4" />
                   </Button>
                 </Link>
+                {aulas.length >= 3 && (
+                  <BotaoOrganizarAulas
+                    cursoId={curso.id}
+                    aulas={aulas}
+                    disabled={busy}
+                    onGravado={refetch}
+                  />
+                )}
+                <BotaoCorrigirPrivacidadeVimeo aulas={aulas} disabled={busy} />
                 <BotaoImportarVimeo onImportar={importarVimeo} disabled={busy} />
                 <BotaoImportarPasta onImportar={importarPastaDrive} disabled={busy} />
                 <Button className="h-8 px-3" onClick={() => abrirAula("nova")}>
@@ -962,7 +973,7 @@ export default function ConteudoPage() {
               label="Link do vídeo"
               required
               hint={
-                'YouTube, Vimeo, Loom ou Google Drive. Dica: no Drive, partilha a PASTA do curso como "Qualquer pessoa com o link" — todos os vídeos lá dentro ficam visíveis para os alunos.'
+                'YouTube, Vimeo, Loom ou Google Drive. No Drive, partilha como "Qualquer pessoa com o link" e, nas definições de partilha, desmarca "Os leitores podem descarregar, imprimir e copiar" — assim o aluno vê sem poder descarregar.'
               }
             >
               <Input

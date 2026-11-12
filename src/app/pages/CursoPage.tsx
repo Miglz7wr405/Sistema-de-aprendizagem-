@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Circle,
   ExternalLink,
@@ -17,8 +18,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Aulas, Cursos, Ficheiros, Perguntas, ProgressoDb, Seccoes } from "@/lib/db";
-import type { Aula, Pergunta } from "@/lib/types";
+import { Aulas, Cursos, Ficheiros, Modulos, Perguntas, ProgressoDb, Seccoes } from "@/lib/db";
+import type { Aula, Modulo, Pergunta } from "@/lib/types";
 import { NIVEL_LABEL, NIVEL_STYLE, PAPEL_LABEL } from "@/lib/types";
 import { driveId, leitorDoLink, miniaturaDoLink } from "@/lib/video";
 import { cn, tempoRelativo } from "@/lib/utils";
@@ -79,7 +80,11 @@ function Leitor({ aula }: { aula: Aula }) {
     const ehDrive = Boolean(driveId(aula.url));
     return (
       <div>
-        <div className={caixa} style={{ aspectRatio: "16 / 9" }}>
+        <div
+          className={caixa}
+          style={{ aspectRatio: "16 / 9" }}
+          onContextMenu={ehDrive ? (e) => e.preventDefault() : undefined}
+        >
           <iframe
             key={aula.id}
             src={leitor.src}
@@ -294,12 +299,13 @@ export default function CursoPage() {
   const { data, loading } = useData(async () => {
     const curso = await Cursos.obter(id);
     if (!curso) return null;
-    const [aulas, seccao, progresso] = await Promise.all([
+    const [aulas, modulos, seccao, progresso] = await Promise.all([
       Aulas.doCurso(id),
+      Modulos.doCurso(id),
       Seccoes.obter(curso.seccao_id),
       ProgressoDb.meu(userId),
     ]);
-    return { curso, aulas, seccao, progresso };
+    return { curso, aulas, modulos, seccao, progresso };
   }, [id, userId]);
 
   const [feitas, setFeitas] = useState<Set<string>>(new Set());
@@ -308,10 +314,41 @@ export default function CursoPage() {
   }, [data]);
 
   const aulas = useMemo(() => data?.aulas ?? [], [data]);
+  const modulos = useMemo(() => data?.modulos ?? [], [data]);
   const aulaId = params.get("aula");
   const ativa =
     aulas.find((a) => a.id === aulaId) ?? aulas.find((a) => !feitas.has(a.id)) ?? aulas[0];
   const idx = ativa ? aulas.indexOf(ativa) : -1;
+
+  // Agrupa as aulas por módulo (seguindo a ordem dos módulos e a ordem das aulas dentro).
+  const grupos = useMemo(() => {
+    const out: Array<{ modulo: Modulo | null; aulas: Aula[] }> = [];
+    for (const m of modulos) {
+      const lista = aulas.filter((a) => a.modulo_id === m.id);
+      if (lista.length > 0) out.push({ modulo: m, aulas: lista });
+    }
+    const soltas = aulas.filter((a) => !a.modulo_id);
+    if (soltas.length > 0) {
+      // Se ainda não há módulos, não mostra o cabeçalho "Outras aulas" — é só a lista toda.
+      if (out.length === 0) out.push({ modulo: null, aulas: soltas });
+      else out.push({ modulo: null, aulas: soltas });
+    }
+    return out;
+  }, [aulas, modulos]);
+
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    // No primeiro render: abre todos os módulos para o aluno ver tudo.
+    setAbertos(new Set(modulos.map((m) => m.id)));
+  }, [modulos]);
+  function alternarModulo(mid: string) {
+    setAbertos((prev) => {
+      const s = new Set(prev);
+      if (s.has(mid)) s.delete(mid);
+      else s.add(mid);
+      return s;
+    });
+  }
 
   // Regista que a aula foi aberta (para o "Continuar a ver").
   useEffect(() => {
@@ -463,47 +500,88 @@ export default function CursoPage() {
               </span>
             </div>
             <ProgressBar value={pct} className="mt-2 h-1.5" />
-            <div className="mt-3 max-h-[60vh] space-y-1.5 overflow-y-auto pr-1">
-              {aulas.map((a, i) => {
-                const thumb = miniaturaDoLink(a.url);
+            <div className="mt-3 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+              {grupos.map((g) => {
+                const aberto = g.modulo ? abertos.has(g.modulo.id) : true;
+                const feitasModulo = g.aulas.filter((a) => feitas.has(a.id)).length;
                 return (
-                  <button
-                    key={a.id}
-                    onClick={() => abrir(a)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition",
-                      a.id === ativa.id
-                        ? "border-accent bg-accent-soft"
-                        : "border-hairline hover:border-accent/50",
-                    )}
-                  >
-                    <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md bg-text-hi">
-                      {thumb ? (
-                        <img
-                          src={thumb}
-                          alt=""
-                          loading="lazy"
-                          className="h-full w-full object-cover"
-                          onError={(e) => (e.currentTarget.style.visibility = "hidden")}
-                        />
-                      ) : (
-                        <div className="grid h-full w-full place-items-center text-white/60">
-                          <PlayCircle className="size-5" />
-                        </div>
-                      )}
-                      {feitas.has(a.id) && (
-                        <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-green-500 text-white">
-                          <CheckCircle2 className="size-3" />
+                  <section key={g.modulo?.id ?? "soltas"} className="space-y-1">
+                    {g.modulo && (
+                      <button
+                        type="button"
+                        onClick={() => alternarModulo(g.modulo!.id)}
+                        className="flex w-full items-center gap-2 rounded-md bg-bg-base px-2 py-1.5 text-left transition hover:bg-accent-soft"
+                      >
+                        {aberto ? (
+                          <ChevronDown className="size-4 shrink-0 text-text-low" />
+                        ) : (
+                          <ChevronRight className="size-4 shrink-0 text-text-low" />
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-text-hi">
+                            {g.modulo.titulo}
+                          </span>
+                          {g.modulo.descricao && (
+                            <span className="line-clamp-2 block text-[11px] text-text-low">
+                              {g.modulo.descricao}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-text-low">Aula {i + 1}</p>
-                      <p className="line-clamp-2 text-sm font-medium leading-snug text-text-hi">
-                        {a.titulo}
-                      </p>
-                    </div>
-                  </button>
+                        <span className="shrink-0 text-[11px] text-text-low">
+                          {feitasModulo}/{g.aulas.length}
+                        </span>
+                      </button>
+                    )}
+                    {aberto && (
+                      <div className="space-y-1.5">
+                        {g.aulas.map((a) => {
+                          const i = aulas.indexOf(a);
+                          const thumb = miniaturaDoLink(a.url);
+                          return (
+                            <button
+                              key={a.id}
+                              onClick={() => abrir(a)}
+                              className={cn(
+                                "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition",
+                                a.id === ativa.id
+                                  ? "border-accent bg-accent-soft"
+                                  : "border-hairline hover:border-accent/50",
+                              )}
+                            >
+                              <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-md bg-text-hi">
+                                {thumb ? (
+                                  <img
+                                    src={thumb}
+                                    alt=""
+                                    loading="lazy"
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+                                  />
+                                ) : (
+                                  <div className="grid h-full w-full place-items-center text-white/60">
+                                    <PlayCircle className="size-5" />
+                                  </div>
+                                )}
+                                {feitas.has(a.id) && (
+                                  <span className="absolute right-1 top-1 grid size-4 place-items-center rounded-full bg-green-500 text-white">
+                                    <CheckCircle2 className="size-3" />
+                                  </span>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[11px] font-medium text-text-low">
+                                  Aula {i + 1}
+                                </p>
+                                <p className="line-clamp-2 text-sm font-medium leading-snug text-text-hi">
+                                  {a.titulo}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
                 );
               })}
             </div>
