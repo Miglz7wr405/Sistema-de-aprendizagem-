@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CheckCircle2, EyeOff, PlayCircle } from "lucide-react";
+import { CheckCircle2, EyeOff, Heart, PlayCircle } from "lucide-react";
 
 import type { Aula, Curso, Progresso, Seccao } from "@/lib/types";
 import { NIVEL_LABEL, NIVEL_STYLE } from "@/lib/types";
@@ -79,6 +79,17 @@ export function CursoCard({ cat, curso }: { cat: Catalogo; curso: Curso }) {
       <div className="flex flex-1 flex-col p-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge className={NIVEL_STYLE[curso.nivel]}>{NIVEL_LABEL[curso.nivel]}</Badge>
+          {curso.coracoes > 0 && (
+            <span
+              className="inline-flex items-center gap-0.5"
+              aria-label={`${curso.coracoes} de 5 corações`}
+              title={`${curso.coracoes} de 5 corações`}
+            >
+              {Array.from({ length: curso.coracoes }, (_, i) => (
+                <Heart key={i} className="size-3.5 fill-red-500 text-red-500" />
+              ))}
+            </span>
+          )}
           <span className="text-xs text-text-low">
             {total} {total === 1 ? "aula" : "aulas"}
             {curso.duracao ? ` · ${curso.duracao}` : ""}
@@ -100,6 +111,65 @@ export function CursoCard({ cat, curso }: { cat: Catalogo; curso: Curso }) {
           <ProgressBar value={pct} className="h-1.5" />
         </div>
       </div>
+    </Link>
+  );
+}
+
+export function capaDaSeccao(cat: Catalogo, seccao: Seccao, cursos: Curso[]) {
+  if (seccao.capa_url) return seccao.capa_url;
+  for (const c of cursos) {
+    const capa = capaDoCurso(cat, c);
+    if (capa) return capa;
+  }
+  return null;
+}
+
+export function SeccaoCard({
+  cat,
+  seccao,
+  cursos,
+}: {
+  cat: Catalogo;
+  seccao: Seccao;
+  cursos: Curso[];
+}) {
+  const capa = capaDaSeccao(cat, seccao, cursos);
+  const nAulas = cursos.reduce((n, c) => n + aulasDoCurso(cat, c.id).length, 0);
+  return (
+    <Link
+      to={`/seccao/${seccao.id}`}
+      className="app-card app-card-hover group flex flex-col overflow-hidden"
+    >
+      <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-accent to-accent-2">
+        {capa && (
+          <img
+            src={capa}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+        <span className="absolute left-3 top-3 grid size-11 place-items-center rounded-xl bg-white/90 text-2xl shadow">
+          {seccao.icone || "📚"}
+        </span>
+        {seccao.visibilidade === "privada" && (
+          <span className="absolute right-3 top-3">
+            <BadgePrivado />
+          </span>
+        )}
+        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+          <h3 className="font-display text-lg font-bold leading-snug">{seccao.titulo}</h3>
+          <p className="mt-0.5 text-xs text-white/80">
+            {cursos.length} {cursos.length === 1 ? "curso" : "cursos"} · {nAulas}{" "}
+            {nAulas === 1 ? "aula" : "aulas"}
+          </p>
+        </div>
+      </div>
+      {seccao.descricao && (
+        <p className="line-clamp-2 px-4 py-3 text-sm text-text-mid">{seccao.descricao}</p>
+      )}
     </Link>
   );
 }

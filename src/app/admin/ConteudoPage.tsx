@@ -8,19 +8,24 @@ import {
   Eye,
   EyeOff,
   FileVideo,
+  FolderInput,
   GripVertical,
+  Heart,
   HardDrive,
+  Image,
   Link2,
+  Loader2,
   Lock,
   Pencil,
   PlayCircle,
   Plus,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Aulas, Cursos, Ficheiros, LIMITE_UPLOAD, Seccoes } from "@/lib/db";
+import { Aulas, Capas, Cursos, Ficheiros, LIMITE_CAPA, LIMITE_UPLOAD, Seccoes } from "@/lib/db";
 import type { Aula, Curso, Nivel, Seccao, Visibilidade } from "@/lib/types";
 import { NIVEL_LABEL } from "@/lib/types";
 import { driveId, linkValido, miniaturaDoLink, tipoDoLink } from "@/lib/video";
@@ -179,7 +184,13 @@ function PreVisualizacaoLink({ url }: { url: string }) {
 
 // ─── Formulários ─────────────────────────────────────────────────────────
 
-type FormSeccao = { titulo: string; descricao: string; icone: string; visibilidade: Visibilidade };
+type FormSeccao = {
+  titulo: string;
+  descricao: string;
+  icone: string;
+  capa_url: string;
+  visibilidade: Visibilidade;
+};
 type FormCurso = {
   titulo: string;
   descricao: string;
@@ -187,14 +198,103 @@ type FormCurso = {
   duracao: string;
   publicado: boolean;
   seccao_id: string;
+  capa_url: string;
+  coracoes: number;
 };
 type FormAula = {
+  posicao: string;
   titulo: string;
   descricao: string;
+  modulo: string;
   fonte: "link" | "upload" | "drive";
   url: string;
   ficheiro: File | null;
 };
+
+function CampoCapa({
+  valor,
+  onChange,
+  semCapa,
+}: {
+  valor: string;
+  onChange: (url: string) => void;
+  semCapa: string;
+}) {
+  const [aEnviar, setAEnviar] = useState(false);
+
+  async function enviar(file: File) {
+    if (!file.type.startsWith("image/")) return toast.error("Escolhe um ficheiro de imagem.");
+    if (file.size > LIMITE_CAPA) return toast.error("A imagem tem de ter até 5 MB.");
+    setAEnviar(true);
+    try {
+      onChange(await Capas.enviar(file));
+      toast.success("Imagem carregada — carrega em Guardar.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível carregar a imagem.");
+    } finally {
+      setAEnviar(false);
+    }
+  }
+
+  return (
+    <>
+      <label
+        className={cn(
+          "mb-2 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-sm font-medium text-text-mid transition hover:border-accent hover:text-accent",
+          aEnviar && "pointer-events-none opacity-60",
+        )}
+      >
+        {aEnviar ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+        {aEnviar ? "A carregar imagem..." : "Carregar imagem do dispositivo"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="sr-only"
+          disabled={aEnviar}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) enviar(f);
+          }}
+        />
+      </label>
+      <div className="flex gap-2">
+        <Input
+          type="url"
+          inputMode="url"
+          placeholder="ou cola o link: https://exemplo.com/capa.png"
+          value={valor}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1"
+        />
+        {valor && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="grid size-10 shrink-0 place-items-center rounded-lg border border-hairline text-text-low hover:bg-red-50 hover:text-red-600"
+            title="Remover capa"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+      {valor ? (
+        <img
+          key={valor}
+          src={valor}
+          alt="Pré-visualização da capa"
+          className="mt-2 h-32 rounded-lg object-cover"
+          onError={(e) => (e.currentTarget.style.display = "none")}
+        />
+      ) : (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-text-low">
+          <Image className="size-3.5" />
+          {semCapa}
+        </p>
+      )}
+    </>
+  );
+}
 
 export default function ConteudoPage() {
   const [params, setParams] = useSearchParams();
@@ -214,6 +314,7 @@ export default function ConteudoPage() {
     titulo: "",
     descricao: "",
     icone: "📚",
+    capa_url: "",
     visibilidade: "academia",
   });
   const [modalCurso, setModalCurso] = useState<Curso | "novo" | null>(null);
@@ -224,17 +325,23 @@ export default function ConteudoPage() {
     duracao: "",
     publicado: true,
     seccao_id: "",
+    capa_url: "",
+    coracoes: 0,
   });
   const [modalAula, setModalAula] = useState<Aula | "nova" | null>(null);
   const [fa, setFa] = useState<FormAula>({
+    posicao: "",
     titulo: "",
     descricao: "",
+    modulo: "",
     fonte: "link",
     url: "",
     ficheiro: null,
   });
   const [busy, setBusy] = useState(false);
   const [arrastar, setArrastar] = useState<number | null>(null);
+  const [cursoAMover, setCursoAMover] = useState<Curso | null>(null);
+  const [destinoMover, setDestinoMover] = useState("");
 
   const seccao = data?.seccoes.find((s) => s.id === seccaoId) ?? null;
   const curso = data?.cursos.find((c) => c.id === cursoId) ?? null;
@@ -294,11 +401,12 @@ export default function ConteudoPage() {
     setModalSeccao(s);
     setFs(
       s === "nova"
-        ? { titulo: "", descricao: "", icone: "📚", visibilidade: "academia" }
+        ? { titulo: "", descricao: "", icone: "📚", capa_url: "", visibilidade: "academia" }
         : {
             titulo: s.titulo,
             descricao: s.descricao ?? "",
             icone: s.icone ?? "📚",
+            capa_url: s.capa_url ?? "",
             visibilidade: s.visibilidade,
           },
     );
@@ -309,6 +417,7 @@ export default function ConteudoPage() {
       titulo: fs.titulo.trim(),
       descricao: fs.descricao.trim() || null,
       icone: fs.icone.trim() || "📚",
+      capa_url: fs.capa_url.trim() || null,
       visibilidade: fs.visibilidade,
     };
     const ok = await tentar(async () => {
@@ -352,6 +461,8 @@ export default function ConteudoPage() {
             duracao: "",
             publicado: true,
             seccao_id: seccaoId ?? "",
+            capa_url: "",
+            coracoes: 0,
           }
         : {
             titulo: c.titulo,
@@ -360,6 +471,8 @@ export default function ConteudoPage() {
             duracao: c.duracao ?? "",
             publicado: c.publicado,
             seccao_id: c.seccao_id,
+            capa_url: c.capa_url ?? "",
+            coracoes: c.coracoes ?? 0,
           },
     );
   }
@@ -373,6 +486,8 @@ export default function ConteudoPage() {
       duracao: fc.duracao.trim() || null,
       publicado: fc.publicado,
       seccao_id: fc.seccao_id,
+      capa_url: fc.capa_url.trim() || null,
+      coracoes: fc.coracoes,
     };
     const ok = await tentar(async () => {
       if (modalCurso === "novo") {
@@ -403,10 +518,20 @@ export default function ConteudoPage() {
     setModalAula(a);
     setFa(
       a === "nova"
-        ? { titulo: "", descricao: "", fonte: "link", url: "", ficheiro: null }
+        ? {
+            posicao: String(aulas.length + 1),
+            titulo: "",
+            descricao: "",
+            modulo: aulas.at(-1)?.modulo ?? "",
+            fonte: "link",
+            url: "",
+            ficheiro: null,
+          }
         : {
+            posicao: String(aulas.findIndex((x) => x.id === a.id) + 1),
             titulo: a.titulo,
             descricao: a.descricao ?? "",
+            modulo: a.modulo ?? "",
             fonte: a.tipo === "upload" ? "upload" : "link",
             url: a.url ?? "",
             ficheiro: null,
@@ -439,9 +564,21 @@ export default function ConteudoPage() {
         } else {
           fonte = {};
         }
-        const dados = { titulo, descricao: fa.descricao.trim() || null, ...fonte };
+        const dados = {
+          titulo,
+          descricao: fa.descricao.trim() || null,
+          modulo: fa.modulo.trim() || null,
+          ...fonte,
+        };
+        const outras = editar ? aulas.filter((x) => x.id !== editar.id) : aulas;
+        const pedida = parseInt(fa.posicao, 10);
+        const indice = Number.isNaN(pedida)
+          ? outras.length
+          : Math.min(Math.max(pedida, 1), outras.length + 1) - 1;
+        let guardada: Aula;
         if (editar) {
           await Aulas.atualizar(editar.id, dados);
+          guardada = editar;
           // Se trocou o ficheiro (ou passou para link), apaga o vídeo antigo.
           if (
             editar.storage_path &&
@@ -451,8 +588,11 @@ export default function ConteudoPage() {
             await Ficheiros.apagar(editar.storage_path);
           }
         } else {
-          await Aulas.criar({ ...dados, curso_id: curso.id, ordem: aulas.length });
+          guardada = await Aulas.criar({ ...dados, curso_id: curso.id, ordem: aulas.length });
         }
+        const nova = [...outras];
+        nova.splice(indice, 0, guardada);
+        await Aulas.reordenar(nova);
       },
       editar ? "Aula guardada" : "Aula adicionada",
     );
@@ -677,6 +817,15 @@ export default function ConteudoPage() {
                       <EyeOff className="size-4 text-amber-600" />
                     )}
                   </BotaoIcone>
+                  <BotaoIcone
+                    label="Mover para outra secção"
+                    onClick={() => {
+                      setCursoAMover(c);
+                      setDestinoMover("");
+                    }}
+                  >
+                    <FolderInput className="size-4" />
+                  </BotaoIcone>
                   <BotaoIcone label="Editar curso" onClick={() => abrirCurso(c)}>
                     <Pencil className="size-4" />
                   </BotaoIcone>
@@ -775,7 +924,10 @@ export default function ConteudoPage() {
                     )}
                   </div>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] text-text-low">Aula {i + 1}</span>
+                    <span className="block truncate text-[11px] text-text-low">
+                      Aula {i + 1}
+                      {a.modulo ? ` · ${a.modulo}` : ""}
+                    </span>
                     <span className="line-clamp-2 text-sm font-medium leading-snug text-text-hi">
                       {a.titulo}
                     </span>
@@ -835,6 +987,16 @@ export default function ConteudoPage() {
               onChange={(e) => setFs({ ...fs, descricao: e.target.value })}
             />
           </Field>
+          <Field
+            label="Capa da secção"
+            hint="Aparece no cartão da secção no início. Carrega uma imagem (até 5 MB) ou cola um link."
+          >
+            <CampoCapa
+              valor={fs.capa_url}
+              onChange={(capa_url) => setFs((atual) => ({ ...atual, capa_url }))}
+              semCapa="Sem capa definida — será usada a capa do primeiro curso da secção."
+            />
+          </Field>
           <EscolhaVisibilidade
             valor={fs.visibilidade}
             onChange={(v) => setFs({ ...fs, visibilidade: v })}
@@ -848,6 +1010,58 @@ export default function ConteudoPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal mover curso */}
+      <Modal
+        open={cursoAMover !== null}
+        onClose={() => !busy && setCursoAMover(null)}
+        title="Mover curso para outra secção"
+      >
+        {cursoAMover && (
+          <div className="space-y-4">
+            <p className="text-sm text-text-mid">
+              <span className="font-semibold text-text-hi">{cursoAMover.titulo}</span> está em{" "}
+              {data.seccoes.find((s) => s.id === cursoAMover.seccao_id)?.titulo ?? "—"}. As aulas e
+              o progresso dos alunos mantêm-se.
+            </p>
+            <Field label="Mover para">
+              <Select value={destinoMover} onChange={(e) => setDestinoMover(e.target.value)}>
+                <option value="">Escolhe a secção...</option>
+                {data.seccoes
+                  .filter((s) => s.id !== cursoAMover.seccao_id)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.icone} {s.titulo} {s.visibilidade === "privada" ? "(privada)" : ""}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCursoAMover(null)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!destinoMover || busy}
+                onClick={async () => {
+                  const c = cursoAMover;
+                  const destino = destinoMover;
+                  const ordem = data.cursos.filter((x) => x.seccao_id === destino).length;
+                  const ok = await tentar(
+                    () => Cursos.atualizar(c.id, { seccao_id: destino, ordem }),
+                    "Curso movido",
+                  );
+                  if (ok) {
+                    setCursoAMover(null);
+                    escolher(destino, c.id);
+                  }
+                }}
+              >
+                {busy ? "A mover..." : "Mover"}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Modal curso */}
@@ -870,6 +1084,32 @@ export default function ConteudoPage() {
               className="min-h-[70px]"
               onChange={(e) => setFc({ ...fc, descricao: e.target.value })}
             />
+          </Field>
+          <Field
+            label="Corações"
+            hint="A tua classificação do curso. Na secção, os cursos com mais corações aparecem primeiro."
+          >
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  aria-label={`${n} ${n === 1 ? "coração" : "corações"}`}
+                  onClick={() =>
+                    setFc((atual) => ({ ...atual, coracoes: atual.coracoes === n ? 0 : n }))
+                  }
+                  className="grid size-10 place-items-center rounded-lg hover:bg-red-50"
+                >
+                  <Heart
+                    className={cn(
+                      "size-6",
+                      n <= fc.coracoes ? "fill-red-500 text-red-500" : "text-text-low",
+                    )}
+                  />
+                </button>
+              ))}
+              <span className="ml-2 text-sm text-text-low">{fc.coracoes}/5</span>
+            </div>
           </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Nível">
@@ -901,6 +1141,16 @@ export default function ConteudoPage() {
               ))}
             </Select>
           </Field>
+          <Field
+            label="Capa do curso"
+            hint="Carrega uma imagem (até 5 MB) ou cola um link. Vazio = miniatura da primeira aula."
+          >
+            <CampoCapa
+              valor={fc.capa_url}
+              onChange={(capa_url) => setFc((atual) => ({ ...atual, capa_url }))}
+              semCapa="Sem capa definida — será usada a miniatura do primeiro vídeo do curso."
+            />
+          </Field>
           <Switch
             checked={fc.publicado}
             onChange={(v) => setFc({ ...fc, publicado: v })}
@@ -925,12 +1175,41 @@ export default function ConteudoPage() {
         size="lg"
       >
         <div className="space-y-4">
-          <Field label="Título da aula">
+          <div className="grid grid-cols-[110px_1fr] gap-3">
+            <Field label="Posição">
+              <Input
+                semVoz
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={modalAula === "nova" ? aulas.length + 1 : aulas.length}
+                value={fa.posicao}
+                onChange={(e) => setFa({ ...fa, posicao: e.target.value })}
+              />
+            </Field>
+            <Field label="Título da aula">
+              <Input
+                value={fa.titulo}
+                placeholder={`Aula ${aulas.length + 1}`}
+                onChange={(e) => setFa({ ...fa, titulo: e.target.value })}
+              />
+            </Field>
+          </div>
+          <Field
+            label="Módulo"
+            hint="Opcional. Aulas seguidas com o mesmo módulo aparecem agrupadas no curso."
+          >
             <Input
-              value={fa.titulo}
-              placeholder={`Aula ${aulas.length + 1}`}
-              onChange={(e) => setFa({ ...fa, titulo: e.target.value })}
+              value={fa.modulo}
+              list="modulos-do-curso"
+              placeholder="Ex.: Módulo 1 — Introdução"
+              onChange={(e) => setFa({ ...fa, modulo: e.target.value })}
             />
+            <datalist id="modulos-do-curso">
+              {[...new Set(aulas.map((a) => a.modulo).filter(Boolean))].map((m) => (
+                <option key={m} value={m!} />
+              ))}
+            </datalist>
           </Field>
           <div>
             <p className="mb-1.5 text-sm font-medium text-text-hi">Vídeo</p>

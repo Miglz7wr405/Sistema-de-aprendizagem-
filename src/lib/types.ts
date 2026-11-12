@@ -25,6 +25,7 @@ export type Seccao = {
   titulo: string;
   descricao: string | null;
   icone: string | null;
+  capa_url: string | null;
   visibilidade: Visibilidade;
   ordem: number;
   created_at: string;
@@ -38,6 +39,7 @@ export type Curso = {
   nivel: Nivel;
   duracao: string | null;
   capa_url: string | null;
+  coracoes: number;
   ordem: number;
   publicado: boolean;
   created_at: string;
@@ -53,6 +55,7 @@ export type Aula = {
   url: string | null;
   storage_path: string | null;
   duracao: string | null;
+  modulo: string | null;
   ordem: number;
   created_at: string;
 };
