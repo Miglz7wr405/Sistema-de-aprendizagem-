@@ -12,6 +12,7 @@ const InicioPage = lazy(() => import("./app/pages/InicioPage"));
 const SeccaoPage = lazy(() => import("./app/pages/SeccaoPage"));
 const CursoPage = lazy(() => import("./app/pages/CursoPage"));
 const ComunidadePage = lazy(() => import("./app/pages/ComunidadePage"));
+const RankingPage = lazy(() => import("./app/pages/RankingPage"));
 const PerfilPage = lazy(() => import("./app/pages/PerfilPage"));
 const PedidosPage = lazy(() => import("./app/admin/PedidosPage"));
 const MembrosPage = lazy(() => import("./app/admin/MembrosPage"));
@@ -61,6 +62,7 @@ function Rotas() {
           <Route path="curso/:id" element={<CursoPage />} />
           <Route path="comunidade" element={<ComunidadePage />} />
           <Route path="comunidade/:grupoId" element={<ComunidadePage />} />
+          <Route path="ranking" element={<RankingPage />} />
           <Route path="perfil" element={<PerfilPage />} />
           <Route
             path="admin/pedidos"

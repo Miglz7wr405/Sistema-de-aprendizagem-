@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   MessagesSquare,
+  Trophy,
   UserCheck,
   UserCircle,
   Users,
@@ -27,6 +28,7 @@ type ItemNav = { label: string; to: string; icon: LucideIcon; end?: boolean };
 const NAV: ItemNav[] = [
   { label: "Início", to: "/", icon: Home, end: true },
   { label: "Comunidade", to: "/comunidade", icon: MessagesSquare },
+  { label: "Ranking", to: "/ranking", icon: Trophy },
   { label: "O meu perfil", to: "/perfil", icon: UserCircle },
 ];
 

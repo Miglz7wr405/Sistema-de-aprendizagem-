@@ -134,6 +134,27 @@ export type Notificacao = {
   created_at: string;
 };
 
+export type Espectador = {
+  user_id: string;
+  nome: string;
+  avatar_url: string | null;
+  papel: Papel;
+  concluida: boolean;
+  vista_em: string;
+};
+
+export type PosicaoRanking = {
+  user_id: string;
+  nome: string;
+  avatar_url: string | null;
+  papel: Papel;
+  total: number;
+  concluidas: number;
+  posicao: number;
+};
+
+export type PeriodoRanking = "semana" | "mes" | "geral";
+
 export const PAPEL_LABEL: Record<Papel, string> = {
   admin: "Administrador",
   equipa: "Equipa Insight",

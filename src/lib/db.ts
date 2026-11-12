@@ -3,6 +3,7 @@ import { nomeFicheiroSeguro } from "./utils";
 import type {
   Aula,
   Curso,
+  Espectador,
   Grupo,
   Membro,
   Mensagem,
@@ -10,6 +11,8 @@ import type {
   Notificacao,
   Perfil,
   Pergunta,
+  PeriodoRanking,
+  PosicaoRanking,
   Progresso,
   ResumoGrupo,
   Seccao,
@@ -209,6 +212,23 @@ export const ProgressoDb = {
       { onConflict: "user_id,aula_id" },
     );
     falhar(error);
+  },
+};
+
+// ─── Social: quem viu + ranking ──────────────────────────────────────────
+
+export const Social = {
+  /** Membros que já abriram esta aula (os concluídos primeiro). */
+  async quemViu(aulaId: string) {
+    const { data, error } = await supabase.rpc("quem_viu_aula", { p_aula: aulaId });
+    falhar(error);
+    return (data ?? []) as Espectador[];
+  },
+  /** Ranking de quem assistiu a mais vídeos no período. */
+  async ranking(periodo: PeriodoRanking) {
+    const { data, error } = await supabase.rpc("ranking", { p_periodo: periodo });
+    falhar(error);
+    return (data ?? []) as PosicaoRanking[];
   },
 };
 

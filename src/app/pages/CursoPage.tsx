@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Circle,
   ExternalLink,
+  Eye,
   ListVideo,
   Loader2,
   MessageCircleQuestion,
@@ -17,11 +18,21 @@ import {
   Reply,
   Send,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Aulas, Cursos, Ficheiros, Modulos, Perguntas, ProgressoDb, Seccoes } from "@/lib/db";
+import {
+  Aulas,
+  Cursos,
+  Ficheiros,
+  Modulos,
+  Perguntas,
+  ProgressoDb,
+  Seccoes,
+  Social,
+} from "@/lib/db";
 import type { Aula, Modulo, Pergunta } from "@/lib/types";
 import { NIVEL_LABEL, NIVEL_STYLE, PAPEL_LABEL } from "@/lib/types";
 import { driveId, leitorDoLink, miniaturaDoLink } from "@/lib/video";
@@ -307,6 +318,66 @@ function Leitor({ aula }: { aula: Aula }) {
         </Button>
       </a>
     </div>
+  );
+}
+
+function EspectadoresDaAula({ aula }: { aula: Aula }) {
+  // Recarrega sempre que a aula muda — mostra quem já viu, a todos os membros.
+  const { data, loading } = useData(() => Social.quemViu(aula.id), [aula.id]);
+  const lista = data ?? [];
+  const concluiram = lista.filter((e) => e.concluida).length;
+
+  return (
+    <section className="app-card mt-6 p-5">
+      <div className="flex items-center gap-2">
+        <Users className="size-5 text-accent" />
+        <h3 className="font-display text-base font-semibold text-text-hi">
+          Quem já viu esta aula{" "}
+          <span className="text-sm font-normal text-text-low">({lista.length})</span>
+        </h3>
+      </div>
+      {loading ? (
+        <div className="py-4 text-center text-text-low">
+          <Loader2 className="mx-auto size-5 animate-spin" />
+        </div>
+      ) : lista.length === 0 ? (
+        <p className="mt-2 text-sm text-text-low">Ainda ninguém viu esta aula. Sê o primeiro!</p>
+      ) : (
+        <>
+          <p className="mt-1 text-xs text-text-low">
+            {concluiram} {concluiram === 1 ? "pessoa concluiu" : "pessoas concluíram"} · verde =
+            concluída
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-3">
+            {lista.map((e) => (
+              <li key={e.user_id} className="flex items-center gap-2">
+                <div className="relative">
+                  <Avatar nome={e.nome || "?"} className="size-8 text-xs" />
+                  {e.concluida && (
+                    <span className="absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full bg-green-500 text-white ring-2 ring-bg-elevated">
+                      <CheckCircle2 className="size-3" />
+                    </span>
+                  )}
+                </div>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-medium text-text-hi">{e.nome}</span>
+                    {e.papel !== "aluno" && (
+                      <Badge className="bg-accent-soft px-1.5 py-0 text-[10px] text-accent">
+                        {PAPEL_LABEL[e.papel]}
+                      </Badge>
+                    )}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] text-text-low">
+                    <Eye className="size-3" /> {tempoRelativo(e.vista_em)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -660,6 +731,7 @@ export default function CursoPage() {
             {ativa.descricao && (
               <p className="mt-3 whitespace-pre-wrap text-sm text-text-mid">{ativa.descricao}</p>
             )}
+            <EspectadoresDaAula aula={ativa} />
             <PerguntasDaAula aula={ativa} />
           </div>
 
