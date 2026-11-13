@@ -83,3 +83,15 @@ export async function enviarEmail(para: string[], assunto: string, texto: string
 export function urlDaApp(_req?: Request) {
   return (Deno.env.get("ACADEMIA_URL") || "https://insight-academia.vercel.app").replace(/\/+$/, "");
 }
+
+/** Lê um segredo do ambiente OU da tabela `segredos` (onde o admin cola as suas chaves de API). */
+export async function segredo(nome: string): Promise<string | null> {
+  const env = Deno.env.get(nome);
+  if (env) return env;
+  const { data } = await clienteAdmin()
+    .from("segredos")
+    .select("valor")
+    .eq("nome", nome)
+    .maybeSingle();
+  return (data?.valor as string | undefined) ?? null;
+}

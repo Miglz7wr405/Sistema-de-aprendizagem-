@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   MessagesSquare,
+  Sparkles,
   Trophy,
   UserCheck,
   UserCircle,
@@ -37,6 +38,7 @@ const NAV_ADMIN: ItemNav[] = [
   { label: "Membros", to: "/admin/membros", icon: Users },
   { label: "Conteúdo", to: "/admin/conteudo", icon: FolderKanban },
   { label: "Grupos", to: "/admin/grupos", icon: BookOpen },
+  { label: "IA & Chaves", to: "/admin/ia", icon: Sparkles },
 ];
 
 function usePedidosPendentes(ativo: boolean) {

@@ -18,6 +18,7 @@ const PedidosPage = lazy(() => import("./app/admin/PedidosPage"));
 const MembrosPage = lazy(() => import("./app/admin/MembrosPage"));
 const ConteudoPage = lazy(() => import("./app/admin/ConteudoPage"));
 const GruposPage = lazy(() => import("./app/admin/GruposPage"));
+const IAPage = lazy(() => import("./app/admin/IAPage"));
 
 function SoAdmin({ children }: { children: ReactNode }) {
   const { eAdmin } = useAuth();
@@ -93,6 +94,14 @@ function Rotas() {
             element={
               <SoAdmin>
                 <GruposPage />
+              </SoAdmin>
+            }
+          />
+          <Route
+            path="admin/ia"
+            element={
+              <SoAdmin>
+                <IAPage />
               </SoAdmin>
             }
           />

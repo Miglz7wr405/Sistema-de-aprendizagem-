@@ -19,6 +19,7 @@ import {
   Pencil,
   PlayCircle,
   Plus,
+  Sparkles,
   Trash2,
   Upload,
   X,
@@ -36,6 +37,7 @@ import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
 import { BotaoImportarVimeo, type VideoVimeo } from "../components/VimeoImporter";
 import { BotaoCorrigirPrivacidadeVimeo } from "../components/CorrigirPrivacidadeVimeo";
 import { BotaoOrganizarAulas } from "../components/OrganizarAulas";
+import { BotaoGerarTextos, gerarUmaAula } from "../components/GerarTextos";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -339,6 +341,7 @@ export default function ConteudoPage() {
     ficheiro: null,
   });
   const [busy, setBusy] = useState(false);
+  const [gerandoTexto, setGerandoTexto] = useState(false);
   const [arrastar, setArrastar] = useState<number | null>(null);
   const [cursoAMover, setCursoAMover] = useState<Curso | null>(null);
   const [destinoMover, setDestinoMover] = useState("");
@@ -851,6 +854,9 @@ export default function ConteudoPage() {
                     <ExternalLink className="size-4" />
                   </Button>
                 </Link>
+                {aulas.length > 0 && (
+                  <BotaoGerarTextos cursoId={curso.id} disabled={busy} onConcluido={refetch} />
+                )}
                 {aulas.length >= 3 && (
                   <BotaoOrganizarAulas
                     cursoId={curso.id}
@@ -1194,6 +1200,38 @@ export default function ConteudoPage() {
                 onChange={(e) => setFa({ ...fa, titulo: e.target.value })}
               />
             </Field>
+            {modalAula !== "nova" && modalAula && (
+              <Button
+                variant="outline"
+                className="mt-2 h-9"
+                disabled={gerandoTexto || busy}
+                onClick={async () => {
+                  setGerandoTexto(true);
+                  try {
+                    const r = await gerarUmaAula(modalAula.id);
+                    setFa((f) => ({ ...f, titulo: r.titulo, descricao: r.descricao }));
+                    await refetch();
+                    toast.success("Título e descrição gerados pela IA.");
+                  } catch (e) {
+                    toast.error(
+                      `Não deu para gerar: ${e instanceof Error ? e.message : "erro"}. Verifica a chave em IA & Chaves.`,
+                    );
+                  } finally {
+                    setGerandoTexto(false);
+                  }
+                }}
+              >
+                {gerandoTexto ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> A analisar o vídeo...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-4" /> Gerar título e descrição com IA
+                  </>
+                )}
+              </Button>
+            )}
           </div>
           <Field
             label="Módulo"
