@@ -1,10 +1,11 @@
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import { supabaseConfigurado } from "@/lib/supabase";
 import { AuthProvider, useAuth } from "./app/auth";
 import Layout from "./app/Layout";
+import { IntroBoasVindas } from "./app/components/IntroBoasVindas";
 import { Carregando } from "./app/components/primitives";
 import { EntrarPage, EstadoContaPage, PedirAcessoPage, Shell } from "./app/pages/Publico";
 
@@ -112,6 +113,45 @@ function Rotas() {
   );
 }
 
+/** Intro com falhas: completa na 1.ª visita da sessão; só a saudação logo após o login. */
+function ComIntro({ children }: { children: ReactNode }) {
+  const { sessao, perfil, carregando } = useAuth();
+  const [modo, setModo] = useState<"completa" | "saudacao" | null>(() => {
+    try {
+      return sessionStorage.getItem("intro-vista") ? null : "completa";
+    } catch {
+      return "completa";
+    }
+  });
+  const tinhaSessao = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (carregando) return;
+    const tem = Boolean(sessao);
+    if (tinhaSessao.current === false && tem) setModo("saudacao");
+    tinhaSessao.current = tem;
+  }, [sessao, carregando]);
+
+  const fim = () => {
+    try {
+      sessionStorage.setItem("intro-vista", "1");
+    } catch {
+      /* sem storage: a intro volta a aparecer, sem problema */
+    }
+    setModo(null);
+  };
+
+  return (
+    <>
+      {children}
+      {modo === "completa" && <IntroBoasVindas nome={perfil?.nome_completo} onFim={fim} />}
+      {modo === "saudacao" && perfil && (
+        <IntroBoasVindas nome={perfil.nome_completo} soSaudacao onFim={fim} />
+      )}
+    </>
+  );
+}
+
 export default function App() {
   if (!supabaseConfigurado) {
     return (
@@ -126,7 +166,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Rotas />
+        <ComIntro>
+          <Rotas />
+        </ComIntro>
         <Toaster richColors position="top-center" />
       </AuthProvider>
     </BrowserRouter>

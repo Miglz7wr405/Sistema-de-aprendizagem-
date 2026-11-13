@@ -210,3 +210,75 @@ body {
     outline-offset: 2px;
   }
 }
+
+/* ── Intro de boas-vindas com falhas (glitch), tema claro ── */
+.intro-glitch {
+  background:
+    radial-gradient(ellipse at 50% 45%, var(--bg-elevated) 0%, var(--accent-soft) 100%);
+  color: var(--text-hi);
+  transition: opacity .45s ease, filter .45s ease;
+}
+.intro-saida { opacity: 0; filter: blur(6px); }
+.intro-titulo {
+  font-family: var(--font-display); font-weight: 700; letter-spacing: -.03em; line-height: 1;
+  font-size: clamp(3rem, 12vw, 7rem);
+}
+.intro-sub {
+  font-family: var(--font-display); font-weight: 600; letter-spacing: .32em; text-transform: uppercase;
+  font-size: clamp(.9rem, 3.4vw, 1.4rem); color: var(--text-mid);
+}
+.intro-cena { animation: intro-entra .5s steps(1) both, intro-tremor 1.9s linear both; }
+.intro-logo { animation: intro-pisca 1.9s steps(1) both; }
+
+.glitch { position: relative; display: inline-block; }
+.glitch::before, .glitch::after {
+  content: attr(data-text); position: absolute; inset: 0; pointer-events: none;
+}
+.glitch::before { color: var(--accent); mix-blend-mode: multiply; animation: glitch-a 1.9s steps(1) infinite; }
+.glitch::after { color: #ff2d55; mix-blend-mode: multiply; animation: glitch-b 1.9s steps(1) infinite; }
+
+/* faixas de linhas que passam (como no vídeo de referência), em azul suave */
+.intro-bandas {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background:
+    repeating-linear-gradient(90deg, color-mix(in oklab, var(--accent) 22%, transparent) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(0deg, color-mix(in oklab, var(--accent) 6%, transparent) 0 1px, transparent 1px 4px);
+  animation: intro-bandas 1.9s steps(1) infinite;
+}
+
+@keyframes intro-entra {
+  0% { opacity: 0; } 10% { opacity: 1; transform: translateX(-6px) skewX(-8deg); }
+  20% { transform: translateX(4px); } 30% { opacity: .4; transform: none; } 40%, 100% { opacity: 1; transform: none; }
+}
+@keyframes intro-tremor {
+  0%, 18%, 22%, 63%, 67%, 100% { transform: none; }
+  20% { transform: translate(3px, -1px) skewX(4deg); }
+  65% { transform: translate(-4px, 1px) skewX(-6deg); }
+}
+@keyframes intro-pisca { 0% { opacity: 0; } 8% { opacity: 1; } 12% { opacity: .3; } 16%, 100% { opacity: 1; } 64% { opacity: .5; } 66% { opacity: 1; } }
+@keyframes glitch-a {
+  0% { clip-path: inset(10% 0 70% 0); transform: translate(-6px, 0); }
+  6% { clip-path: inset(55% 0 20% 0); transform: translate(5px, 0); }
+  12% { clip-path: inset(30% 0 45% 0); transform: translate(-3px, 0); }
+  18%, 58% { clip-path: inset(0 0 100% 0); transform: none; }
+  62% { clip-path: inset(70% 0 5% 0); transform: translate(8px, 0); }
+  66% { clip-path: inset(15% 0 60% 0); transform: translate(-5px, 0); }
+  70%, 100% { clip-path: inset(0 0 100% 0); transform: none; }
+}
+@keyframes glitch-b {
+  0% { clip-path: inset(60% 0 15% 0); transform: translate(6px, 0); }
+  6% { clip-path: inset(20% 0 60% 0); transform: translate(-5px, 0); }
+  12% { clip-path: inset(45% 0 30% 0); transform: translate(4px, 0); }
+  18%, 58% { clip-path: inset(0 0 100% 0); transform: none; }
+  62% { clip-path: inset(5% 0 75% 0); transform: translate(-7px, 0); }
+  66% { clip-path: inset(50% 0 25% 0); transform: translate(5px, 0); }
+  70%, 100% { clip-path: inset(0 0 100% 0); transform: none; }
+}
+@keyframes intro-bandas {
+  0% { opacity: .9; transform: translateY(-30%) scaleY(.35); } 6% { opacity: .5; transform: translateY(10%) scaleY(.2); }
+  12%, 58% { opacity: 0; } 62% { opacity: .7; transform: translateY(25%) scaleY(.25); } 68%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-cena, .intro-logo, .glitch::before, .glitch::after, .intro-bandas { animation: none; }
+  .glitch::before, .glitch::after, .intro-bandas { display: none; }
+}
