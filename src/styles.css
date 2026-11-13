@@ -210,3 +210,43 @@ body {
     outline-offset: 2px;
   }
 }
+
+/* ── Intro leve (só transform/opacity/clip-path) ── */
+.intro-leve { background: radial-gradient(ellipse at 50% 40%, #ffffff 0%, var(--accent-soft) 120%); transition: opacity .38s ease; }
+.intro-sai { opacity: 0; }
+.intro-linhas {
+  position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(0deg, rgba(0, 51, 255, .035) 0 1px, transparent 1px 4px);
+}
+.intro-grande { font-family: var(--font-display); font-weight: 700; letter-spacing: -.03em; line-height: 1; font-size: clamp(2.6rem, 11vw, 5rem); color: var(--text-hi); }
+.intro-pequeno { font-weight: 600; font-size: .8rem; letter-spacing: .35em; text-transform: uppercase; color: var(--text-mid); }
+.intro-cena { animation: intro-in .55s cubic-bezier(.2, .8, .2, 1) both; will-change: transform, opacity; }
+.intro-logo { animation: intro-in .55s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes intro-in {
+  0% { opacity: 0; transform: translateY(8px) scale(.98); }
+  12% { opacity: 1; transform: translateX(-5px) skewX(-6deg); }
+  20% { transform: translateX(4px); }
+  28%, 100% { opacity: 1; transform: none; }
+}
+.intro-falha { position: relative; display: inline-block; }
+.intro-falha::before, .intro-falha::after {
+  content: attr(data-text); position: absolute; inset: 0; opacity: 0; will-change: transform, clip-path;
+}
+.intro-falha::before { color: var(--accent); animation: intro-falha-a .9s steps(1) both; }
+.intro-falha::after { color: #ff2d55; animation: intro-falha-b .9s steps(1) both; }
+@keyframes intro-falha-a {
+  0% { opacity: .9; clip-path: inset(15% 0 60% 0); transform: translateX(-7px); }
+  8% { clip-path: inset(55% 0 15% 0); transform: translateX(6px); }
+  16% { clip-path: inset(35% 0 40% 0); transform: translateX(-3px); }
+  24%, 64% { opacity: 0; }
+  68% { opacity: .9; clip-path: inset(65% 0 10% 0); transform: translateX(5px); }
+  74%, 100% { opacity: 0; }
+}
+@keyframes intro-falha-b {
+  0% { opacity: .8; clip-path: inset(60% 0 15% 0); transform: translateX(7px); }
+  8% { clip-path: inset(20% 0 55% 0); transform: translateX(-6px); }
+  16% { clip-path: inset(45% 0 30% 0); transform: translateX(4px); }
+  24%, 64% { opacity: 0; }
+  68% { opacity: .8; clip-path: inset(10% 0 70% 0); transform: translateX(-5px); }
+  74%, 100% { opacity: 0; }
+}
