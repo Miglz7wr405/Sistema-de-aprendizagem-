@@ -162,9 +162,9 @@ put(whoosh(1.3, lo=300, hi=8000), T["car"] - 1.2, .4)
 
 # ── CARROSSEL ──
 F0 = T["car"] + .6
-for i in range(1, 7):
-    put(whoosh(.7, lo=800, hi=9000), F0 + i * 1.38 - .55, .22, pan=.5 - (i % 2))
-    put(tick(1800 + i * 90, .08), F0 + i * 1.38 - .05, .3)
+for i in range(1, 5):
+    put(whoosh(.7, lo=800, hi=9000), F0 + i * 2.0 - .55, .22, pan=.5 - (i % 2))
+    put(tick(1800 + i * 90, .08), F0 + i * 2.0 - .05, .3)
 
 # ── NÚMEROS ──
 put(riser(1.2, 300, 2400), T["num"] + .3, .35)

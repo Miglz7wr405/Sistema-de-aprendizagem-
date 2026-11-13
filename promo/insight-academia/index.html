@@ -398,7 +398,7 @@ const finger = add(`<div class="finger"></div>`);
 const ripple = add(`<div class="ripple"></div>`);
 
 /* Carrossel de áreas */
-const CAR = [["finch", "Marketing Digital"], ["caio", "Marketing Digital"], ["bessan", "Marketing Digital"], ["tiktok", "TikTok Shop"], ["enrico", "Marketing Digital"], ["andro", "Tráfego Pago"], ["cripto", "Criptomoedas"]];
+const CAR = [["finch", "Thiago Finch"], ["caio", "Caio Martins"], ["bessan", "Matheus Bessan"], ["enrico", "Enrico"], ["tiktok", "TikTok Shop"]];
 const ring = add(`<div class="ring"></div>`);
 const ccards = CAR.map(([key, area]) => add(`<div class="ccard"><div class="cv">${cover(key)}</div><div class="info">
   <div class="area">${C[key].a}</div><div class="tit">${C[key].t}</div><div class="meta">${C[key].n} aulas · ${C[key].s}</div></div></div>`, ring));
@@ -723,7 +723,7 @@ function seek(t) {
   caption(6, t); caption(7, t);
 
   /* ── 6. CARROSSEL DE ÁREAS (gira em câmara lenta) ── */
-  const STEP = 1.38, F0T = T.car + .6;
+  const STEP = 2.0, F0T = T.car + .6;
   if (t >= T.car - .4 && t < T.num + .5) {
     const lt = t - T.car;
     const enter = P(t, T.car - .3, T.car + 1.0, "slow"), out = P(t, T.num - .3, T.num + .4, "in");
@@ -747,7 +747,7 @@ function seek(t) {
       el.style.fontSize = (CAR[i][1].length > 14 ? 96 : 120) + "px";
     });
     st(carCount, { op: enter * (1 - out) });
-    carCount.textContent = `Área ${String(Math.round(idx) + 1).padStart(2, "0")} / ${String(CAR.length).padStart(2, "0")}`;
+    carCount.textContent = `Curso ${String(Math.round(idx) + 1).padStart(2, "0")} / ${String(CAR.length).padStart(2, "0")}`;
     st(carCountWord, { op: enter * (1 - out) });
   }
 
