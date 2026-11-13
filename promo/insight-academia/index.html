@@ -367,9 +367,13 @@ const FLOAT = [
 ];
 const fcards = FLOAT.map(([key]) => add(`<div class="fcard"><div class="cv">${cover(key)}</div><div class="info"><b>${C[key].t}</b><span>${C[key].n} aulas · ${C[key].s}</span></div></div>`));
 
+/* Trecho real da aula 1 (frames locais em out/finch_frames, 30 fps) */
+const FINCH_FRAMES = Array.from({ length: 144 }, (_, i) => { const im = new Image(); im.src = `out/finch_frames/f${String(i + 1).padStart(3, "0")}.jpg`; return im; });
+const FINCH_T0 = 2.32; // tempo (relativo a T.play) do primeiro frame
+
 /* Leitor grande (play) */
 const big = add(`<div class="bigplayer"><div id="bpInner" style="position:absolute;inset:0;font-size:1080px">
-  <div id="bpCover" style="position:absolute;inset:0;font-size:1080px">${cover("finch", { noBig: true })}</div>
+  <div id="bpCover" style="position:absolute;inset:0;font-size:1080px">${cover("finch", { noBig: true })}<canvas id="bpVid" width="960" height="540" style="position:absolute;inset:0;width:100%;height:100%"></canvas></div>
   <div id="bpTikCover" style="position:absolute;inset:0;font-size:1080px;opacity:0">${cover("sec-tiktok", { noBig: true })}</div>
   <div id="bpTitle" class="abs" style="left:7%;top:12%;color:#fff">
      <div style="font-size:22px;letter-spacing:.3em;font-weight:600;opacity:.85">MÓDULO 1 · AULA 1</div>
@@ -704,25 +708,16 @@ function seek(t) {
       big.style.borderRadius = mix(18, 0, ex) + "px";
       const pt = Math.max(0, lt - 3.0);
       document.getElementById("bpInner").style.fontSize = (W * sh) + "px";
-      const jx = (rng(Math.floor(t * 60 + 7))() - .5) * 3;
-      const jy = (rng(Math.floor(t * 60 + 11))() - .5) * 2;
-      document.getElementById("bpCover").style.transform = `scale(${1.05 + pt * .03}) translate(${-pt * 6 + jx}px, ${jy}px)`;
-      const tikP = P(lt, 4.2, 5.0, "slow");
-      document.getElementById("bpTikCover").style.opacity = tikP;
-      st(document.getElementById("bpTitle"), { op: P(lt, 3.2, 3.9) * (1 - P(lt, 5.3, 5.8)) * (1 - tikP), tf: `translateY(${(1 - P(lt, 3.2, 4.2, "slow")) * 30}px) scale(${sh})` });
-      st(document.getElementById("bpSub"), { op: P(lt, 3.9, 4.3) * (1 - P(lt, 4.6, 4.9)) * (1 - tikP) });
-      st(document.getElementById("bpSub2"), { op: P(lt, 4.6, 4.9) * (1 - P(lt, 5.2, 5.5)) * (1 - tikP) });
-      st(document.getElementById("bpTikTitle"), { op: tikP * (1 - P(lt, 5.5, 6.1)), tf: `translateY(${(1 - tikP) * 25}px)` });
-      st(document.getElementById("bpTikSub"), { op: tikP * (1 - P(lt, 5.5, 6.1)) });
-      document.getElementById("bpPulse").style.background = `rgba(255,255,255,${(.018 + .014 * Math.sin(pt * 5.8)).toFixed(4)})`;
-      const secs = Math.min(pt * 1.6, 8);
+      const fi = clamp(Math.round((lt - FINCH_T0) * 30), 0, FINCH_FRAMES.length - 1);
+      document.getElementById("bpVid").getContext("2d").drawImage(FINCH_FRAMES[fi], 0, 0, 960, 540);
+      document.getElementById("bpCover").style.transform = "none";
+      for (const id of ["bpTikCover", "bpSub", "bpSub2", "bpTikTitle", "bpTikSub", "bpGrain", "bpScanlines", "bpRec"]) document.getElementById(id).style.opacity = 0;
+      st(document.getElementById("bpTitle"), { op: P(lt, 2.9, 3.4) * (1 - P(lt, 4.4, 4.9)), tf: `translateY(${(1 - P(lt, 2.9, 3.6, "slow")) * 30}px) scale(${sh})` });
+      document.getElementById("bpPulse").style.background = "transparent";
+      const secs = 3.2 + Math.max(0, lt - FINCH_T0);
       const mm = Math.floor(secs / 60), ss = Math.floor(secs % 60);
-      document.getElementById("bpTime").textContent = `${mm}:${String(ss).padStart(2,"0")} / 4:12`;
-      document.getElementById("bpBar").style.width = (secs / 252 * 100) + "%";
-      // grain por frame (seed determinístico = aspeto vídeo real)
-      const gc=document.getElementById("bpGrain");if(gc){const ctx=gc.getContext("2d"),r=rng(Math.floor(t*60+3)),id2=ctx.createImageData(72,40),d=id2.data;for(let i=0;i<d.length;i+=4){const v=r()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=30;}ctx.putImageData(id2,0,0);}
-      // REC pisca a cada ~0.5s
-      const recEl=document.getElementById("bpRec");if(recEl)recEl.style.opacity=Math.sin(pt*3.14)>0?"1":"0.1";
+      document.getElementById("bpTime").textContent = `${mm}:${String(ss).padStart(2,"0")} / 3:37`;
+      document.getElementById("bpBar").style.width = (secs / 217 * 100) + "%";
     }
   }
   caption(6, t); caption(7, t);
@@ -832,7 +827,10 @@ window.seek = seek;
 window.DURACAO = DURACAO; window.FPS = FPS;
 window.ready = document.fonts.ready.then(() => {
   const imgs = [...document.querySelectorAll('img')];
-  return Promise.all(imgs.filter(i => !i.complete).map(i => new Promise(r => { i.onload = i.onerror = r; })));
+  return Promise.all([
+    ...imgs.filter(i => !i.complete).map(i => new Promise(r => { i.onload = i.onerror = r; })),
+    ...FINCH_FRAMES.map(i => i.decode().catch(() => {})),
+  ]);
 }).then(() => { seek(0); return true; });
 </script>
 </body>
