@@ -237,7 +237,7 @@ function cover(key, opts = {}) {
       <img src="${imgSrc}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center">
       <div class="shade"></div>
       ${c && !opts.noBig ? `<div class="tag">Insight Academia · ${c.s}</div>` : ''}
-      ${c && !opts.noBig ? `<div class="big" style="font-size:${size}em">${c.big}</div>` : ''}
+      ${c && !opts.noBig ? `<div style="position:absolute;left:7%;right:7%;bottom:9%;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.046em;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.88);letter-spacing:-.015em;line-height:1.1">${c.t}<div style="font-size:.68em;font-weight:500;opacity:.82;margin-top:.1em">${c.n} aulas · ${c.s}</div></div>` : ''}
     </div>`;
   }
   if (!c) return `<div class="cover"><div class="bgx" style="background:#111"></div></div>`;
@@ -311,7 +311,8 @@ const cursoCard = (key, pct) => { const c = C[key]; return `<div class="card" st
 const scrSec = add(`<div class="scr">${status}
   <div class="hdr"><span class="ic">${I.back}</span><span style="flex:1">Secção</span><span class="ic">${I.bell}</span><span class="av">IA</span></div>
   <div class="body" id="secBody"><div style="display:flex;align-items:center;gap:10px;margin:2px 2px 4px"><span style="font-size:26px">📣</span>
-    <div><div class="disp" style="font-weight:700;font-size:21px">Marketing Digital</div><div style="font-size:12px;color:var(--mid)">5 cursos · 251 aulas</div></div></div>
+    <div><div class="disp" style="font-weight:700;font-size:21px">Marketing Digital</div><div style="font-size:12px;color:var(--mid)">5 cursos · 251 aulas</div>
+    <div style="font-size:11px;color:var(--accent);font-weight:600;margin-top:3px">Thiago Finch · Caio Martins · Enrico Beltrão · Matheus Bessan</div></div></div>
     <div style="height:10px"></div>${SEC_CURSOS.map((k, i) => cursoCard(k, [40, 12, 66, 5, 0][i])).join("")}</div></div>`, screen);
 
 const LICOES = [["Boas-Vindas ao Funnel Bureau", "4:12"], ["Por Que Usar o ClickMax", "8:40"], ["ClickMax: Tudo numa Só Ferramenta", "11:05"], ["Desenhando Funis no Miro", "9:31"]];
@@ -364,10 +365,15 @@ const fcards = FLOAT.map(([key]) => add(`<div class="fcard"><div class="cv">${co
 /* Leitor grande (play) */
 const big = add(`<div class="bigplayer"><div id="bpInner" style="position:absolute;inset:0;font-size:1080px">
   <div id="bpCover" style="position:absolute;inset:0;font-size:1080px">${cover("finch", { noBig: true })}</div>
+  <div id="bpTikCover" style="position:absolute;inset:0;font-size:1080px;opacity:0">${cover("sec-tiktok", { noBig: true })}</div>
   <div id="bpTitle" class="abs" style="left:7%;top:12%;color:#fff">
      <div style="font-size:22px;letter-spacing:.3em;font-weight:600;opacity:.85">MÓDULO 1 · AULA 1</div>
      <div class="disp" style="font-size:58px;font-weight:700;letter-spacing:-.02em;margin-top:6px">Boas-Vindas ao<br/>Funnel Bureau</div></div>
+  <div id="bpTikTitle" class="abs" style="left:7%;top:12%;color:#fff;opacity:0">
+     <div style="font-size:22px;letter-spacing:.3em;font-weight:600;opacity:.85">MÓDULO 1 · AULA 1</div>
+     <div class="disp" style="font-size:58px;font-weight:700;letter-spacing:-.02em;margin-top:6px">TikTok Shop<br/>na Prática</div></div>
   <div id="bpSub" class="abs" style="left:0;right:0;bottom:78px;text-align:center"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Bem-vindo… esta é mais uma aula.</span></div>
+  <div id="bpTikSub" class="abs" style="left:0;right:0;bottom:78px;text-align:center;opacity:0"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Aprende a faturar em dólar com TikTok.</span></div>
   <div class="abs" style="left:24px;right:24px;bottom:22px;display:flex;align-items:center;gap:16px;color:#fff;font-size:20px">
     <span style="width:22px;height:22px">${I.play}</span><span id="bpTime">0:00 / 4:12</span>
     <div style="flex:1;height:6px;border-radius:9px;background:rgba(255,255,255,.3);overflow:hidden"><i id="bpBar" style="display:block;height:100%;width:0;background:#4668f4"></i></div>
@@ -689,8 +695,12 @@ function seek(t) {
       const pt = Math.max(0, lt - 3.0);
       document.getElementById("bpInner").style.fontSize = (W * sh) + "px";
       document.getElementById("bpCover").style.transform = `scale(${1.05 + pt * .03}) translate(${-pt * 6}px, 0)`;
-      st(document.getElementById("bpTitle"), { op: P(lt, 3.2, 3.9) * (1 - P(lt, 5.3, 5.8)), tf: `translateY(${(1 - P(lt, 3.2, 4.2, "slow")) * 30}px) scale(${sh})` });
-      st(document.getElementById("bpSub"), { op: P(lt, 3.9, 4.3) });
+      const tikP = P(lt, 4.2, 5.0, "slow");
+      document.getElementById("bpTikCover").style.opacity = tikP;
+      st(document.getElementById("bpTitle"), { op: P(lt, 3.2, 3.9) * (1 - P(lt, 5.3, 5.8)) * (1 - tikP), tf: `translateY(${(1 - P(lt, 3.2, 4.2, "slow")) * 30}px) scale(${sh})` });
+      st(document.getElementById("bpSub"), { op: P(lt, 3.9, 4.3) * (1 - tikP) });
+      st(document.getElementById("bpTikTitle"), { op: tikP * (1 - P(lt, 5.5, 6.1)), tf: `translateY(${(1 - tikP) * 25}px)` });
+      st(document.getElementById("bpTikSub"), { op: tikP * (1 - P(lt, 5.5, 6.1)) });
       const secs = Math.min(pt, 4.5);
       document.getElementById("bpTime").textContent = `0:0${Math.floor(secs)} / 4:12`;
       document.getElementById("bpBar").style.width = (secs / 252 * 100 * 6) + "%";
