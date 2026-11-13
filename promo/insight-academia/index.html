@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8" />
+<title>Insight Academia — Promo</title>
+<style>
+@font-face { font-family: "Inter"; font-weight: 400 700; src: url("inter-latin.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-weight: 500 700; src: url("space-grotesk-latin.woff2") format("woff2"); }
+:root {
+  --accent: #0033ff; --accent-2: #4668f4; --accent-3: #5187f2; --soft: #e6ecff;
+  --hi: #0f1e37; --mid: #55627a; --low: #97a1b5; --hair: #e4e9f2; --base: #f4f7fc;
+  --wa: #25d366;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+body { font-family: "Inter", "Noto Color Emoji", sans-serif; -webkit-font-smoothing: antialiased; }
+.disp { font-family: "Space Grotesk", "Inter", "Noto Color Emoji", sans-serif; }
+#stage { position: absolute; inset: 0; width: 1080px; height: 1920px; overflow: hidden;
+  background: #03060f; perspective: 2200px; }
+.layer { position: absolute; inset: 0; }
+canvas { position: absolute; inset: 0; }
+.abs { position: absolute; }
+
+/* ── capas desenhadas (tipográficas) ── */
+.cover { position: absolute; inset: 0; overflow: hidden; color: #fff; }
+.cover .bgx { position: absolute; inset: -10%; }
+.cover .lines { position: absolute; inset: 0; opacity: .18;
+  background: repeating-linear-gradient(115deg, rgba(255,255,255,.5) 0 1px, transparent 1px 22px); }
+.cover .big { position: absolute; left: 7%; bottom: 13%; font-family: "Space Grotesk"; font-weight: 700;
+  line-height: .88; letter-spacing: -.03em; white-space: pre; text-shadow: 0 6px 30px rgba(0,0,0,.35); }
+.cover .tag { position: absolute; left: 7%; right: 7%; top: 9%; font-size: .036em; letter-spacing: .2em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase; opacity: .85; }
+.cover .orb { position: absolute; border-radius: 50%; filter: blur(2px); }
+.cover .shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.55), transparent 55%); }
+
+/* ── telemóvel ── */
+.phone { position: absolute; left: 0; top: 0; width: 428px; height: 894px; border-radius: 66px;
+  background: linear-gradient(145deg, #2a2f3a, #0b0d12 40%, #1b1f27); padding: 14px;
+  box-shadow: 0 0 0 2px #3a4050 inset, 0 60px 120px -30px rgba(0,20,120,.65), 0 30px 60px rgba(0,0,0,.6);
+  transform-style: preserve-3d; transform-origin: 50% 50%; }
+.screen { position: relative; width: 400px; height: 866px; border-radius: 52px; overflow: hidden; background: var(--base); color: var(--hi); }
+.island { position: absolute; left: 50%; top: 11px; width: 118px; height: 34px; margin-left: -59px; background: #000; border-radius: 20px; z-index: 50; }
+.glare { position: absolute; inset: 0; border-radius: 52px; pointer-events: none; z-index: 60;
+  background: linear-gradient(120deg, rgba(255,255,255,.18), transparent 35%, transparent 70%, rgba(255,255,255,.06)); }
+.scr { position: absolute; inset: 0; background: var(--base); }
+.status { position: absolute; top: 0; left: 0; right: 0; height: 50px; display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 32px 0; font-size: 15px; font-weight: 600; z-index: 20; }
+.hdr { position: absolute; top: 50px; left: 0; right: 0; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px;
+  background: rgba(255,255,255,.92); border-bottom: 1px solid var(--hair); z-index: 15; font-weight: 600; font-size: 16px; }
+.hdr .ic { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--mid); }
+.av { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-3)); color: #fff;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.body { position: absolute; top: 106px; left: 0; right: 0; padding: 14px; }
+.card { background: #fff; border: 1px solid var(--hair); border-radius: 16px; box-shadow: 0 1px 2px rgba(15,30,55,.04); overflow: hidden; }
+.hero { position: relative; border-radius: 18px; padding: 18px; color: #fff; overflow: hidden;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2) 55%, var(--accent-3)); }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 9px; background: rgba(255,255,255,.16); padding: 5px 9px; font-size: 12px; }
+.bar { height: 6px; border-radius: 99px; background: var(--hair); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+.h2 { font-family: "Space Grotesk"; font-weight: 700; font-size: 17px; margin: 18px 2px 10px; }
+.seccard .cv { position: relative; aspect-ratio: 16/9; }
+.seccard .cv .shade2 { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,.15) 55%, transparent); }
+.seccard .ico { position: absolute; left: 12px; top: 12px; width: 42px; height: 42px; border-radius: 12px; background: rgba(255,255,255,.92);
+  display: grid; place-items: center; font-size: 22px; }
+.seccard .tt { position: absolute; left: 14px; right: 14px; bottom: 12px; color: #fff; }
+.seccard .tt b { font-family: "Space Grotesk"; font-size: 18px; display: block; }
+.seccard .tt span { font-size: 12px; opacity: .82; }
+.lesson { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--hair); font-size: 14px; }
+.lesson .n { width: 28px; height: 28px; border-radius: 50%; background: var(--soft); color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; }
+.lesson .t { flex: 1; font-weight: 500; }
+.lesson .d { font-size: 12px; color: var(--low); }
+
+/* ── tags de preço (gancho) ── */
+.ptag { position: absolute; width: 300px; padding: 22px 24px 18px; border-radius: 18px; background: #f7f3ea; color: #191512;
+  box-shadow: 0 30px 60px rgba(0,0,0,.55); transform-style: preserve-3d; }
+.ptag small { display: block; font-size: 15px; letter-spacing: .2em; font-weight: 600; color: #8a7f70; }
+.ptag b { display: block; font-family: "Space Grotesk"; font-size: 72px; letter-spacing: -.03em; margin: 6px 0 4px; }
+.ptag em { font-style: normal; font-size: 15px; color: #6f665a; }
+.ptag .bc { margin-top: 14px; height: 34px; background: repeating-linear-gradient(90deg, #222 0 3px, transparent 3px 6px, #222 6px 7px, transparent 7px 11px); opacity: .8; }
+.ptag .hole { position: absolute; right: 22px; top: 22px; width: 16px; height: 16px; border-radius: 50%; background: #03060f; }
+
+/* ── legendas cinéticas ── */
+.cap { position: absolute; left: 60px; right: 60px; text-align: center; color: #fff; font-family: "Space Grotesk"; font-weight: 700;
+  letter-spacing: -.02em; line-height: 1.02; }
+.cap .w { display: inline-block; margin: 0 .12em; will-change: transform, opacity, filter; }
+.cap .hl { color: #7ea0ff; }
+.cap .red { color: #ff4d5e; }
+.cap .grn { color: #3ce37d; }
+.kicker { position: absolute; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.6); font-size: 26px; letter-spacing: .32em; font-weight: 600; text-transform: uppercase; }
+
+/* carrossel */
+.ring { position: absolute; left: 540px; top: 860px; width: 0; height: 0; transform-style: preserve-3d; }
+.ccard { position: absolute; width: 620px; left: -310px; top: -260px; border-radius: 26px; overflow: hidden; background: #fff;
+  backface-visibility: hidden; box-shadow: 0 50px 100px -30px rgba(0,30,160,.7); }
+.ccard .cv { position: relative; width: 620px; height: 349px; font-size: 620px; }
+.ccard .info { padding: 22px 26px 24px; color: var(--hi); }
+.ccard .info .area { font-size: 20px; font-weight: 600; color: var(--accent); }
+.ccard .info .tit { font-family: "Space Grotesk"; font-weight: 700; font-size: 32px; margin-top: 4px; }
+.ccard .info .meta { font-size: 19px; color: var(--mid); margin-top: 6px; }
+
+.fcard { position: absolute; width: 460px; border-radius: 22px; overflow: hidden; background: #fff; box-shadow: 0 40px 90px -20px rgba(0,0,0,.7);
+  transform-origin: 50% 50%; }
+.fcard .cv { position: relative; width: 460px; height: 259px; font-size: 460px; }
+.fcard .info { padding: 16px 20px 18px; }
+.fcard .info b { display: block; font-family: "Space Grotesk"; font-size: 26px; color: var(--hi); }
+.fcard .info span { font-size: 17px; color: var(--mid); }
+
+.bigplayer { position: absolute; overflow: hidden; background: #000; border-radius: 18px; box-shadow: 0 60px 140px rgba(0,0,0,.8); }
+.finger { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.95) 0 34%, rgba(255,255,255,.35) 36% 58%, transparent 60%);
+  box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.ripple { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; border: 4px solid rgba(255,255,255,.9); }
+
+.uichip { position: absolute; background: rgba(255,255,255,.97); color: var(--hi); border-radius: 26px; padding: 22px 26px;
+  box-shadow: 0 40px 80px -20px rgba(0,25,140,.6); font-size: 24px; }
+.uichip .lbl { font-size: 17px; letter-spacing: .14em; text-transform: uppercase; color: var(--low); font-weight: 600; }
+
+.numcard { position: absolute; left: 70px; right: 70px; height: 150px; border-radius: 30px; display: flex; align-items: center; gap: 26px; padding: 0 34px;
+  background: rgba(255,255,255,.97); color: var(--hi); box-shadow: 0 40px 80px -25px rgba(0,0,0,.7); }
+.numcard .flag { font-size: 64px; line-height: 1; }
+.numcard .c { font-size: 21px; letter-spacing: .2em; font-weight: 600; color: var(--mid); }
+.numcard .n { font-family: "Space Grotesk"; font-weight: 700; font-size: 52px; letter-spacing: -.01em; }
+.numcard .wa { margin-left: auto; width: 84px; height: 84px; border-radius: 50%; background: var(--wa); display: grid; place-items: center; }
+
+.vignette { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,.55) 100%); }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; mix-blend-mode: screen; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1080" height="1920"></canvas>
+  <div id="world" class="layer" style="transform-style:preserve-3d"></div>
+  <div id="caps" class="layer"></div>
+  <canvas id="fx" width="1080" height="1920"></canvas>
+  <div class="vignette"></div>
+  <div class="flash" id="flash"></div>
+  <div class="flash" id="flashBlue" style="background:#2a55ff"></div>
+</div>
+
+<script>
+/* ═══════════════════ CONSTANTES EDITÁVEIS ═══════════════════ */
+const FPS = 60;
+const DURACAO = 56;
+const NUM_PT = "+351 933 652 888";
+const NUM_MZ = "+258 86 727 2348";
+const TOTAL_AULAS = 747;   // 677 nos cursos publicados + 70 do novo curso
+const TOTAL_CURSOS = 15;
+
+/* Tempos das cenas (segundos) — alinhados com a locução. */
+const T = window.TIMING || {
+  hook: 0, logo: 5.2, home: 8.6, sec: 14.5, play: 19.5, car: 27.0, num: 37.5, vs: 43.5, cta: 47.5,
+};
+
+/* ═══════════════════ EASING ═══════════════════ */
+const E = {
+  lin: t => t,
+  out: t => 1 - Math.pow(1 - t, 3),
+  in: t => t * t * t,
+  io: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  sine: t => -(Math.cos(Math.PI * t) - 1) / 2,
+  expo: t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t),
+  // slow-mo: arranque rápido, cauda muito longa
+  slow: t => 1 - Math.pow(1 - t, 5),
+  back: t => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); },
+};
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const mix = (a, b, p) => a + (b - a) * p;
+/** Keyframes: [[t, v], [t, v, "ease"]...] — a ease aplica-se ao segmento que acaba nesse ponto. */
+function k(t, pts) {
+  if (t <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (t <= pts[i][0]) {
+      const [t0, v0] = pts[i - 1], [t1, v1, e] = pts[i];
+      return v0 + (v1 - v0) * E[e || "io"]((t - t0) / (t1 - t0 || 1));
+    }
+  }
+  return pts[pts.length - 1][1];
+}
+const P = (t, a, b, e = "io") => E[e](clamp((t - a) / (b - a))); // progresso 0..1
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+/* ═══════════════════ ÍCONES ═══════════════════ */
+const I = {
+  menu: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+  bell: '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  back: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.4-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5z"/></svg>',
+  cap: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>',
+  book: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>',
+  trophy: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8M18 2H6v7a6 6 0 0 0 12 0z"/></svg>',
+  heart: '<svg width="13" height="13" viewBox="0 0 24 24" fill="#ef4444"><path d="M12 21s-7.5-4.6-9.6-9.2C.8 8.3 3 4 7 4c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 4 0 6.2 4.3 4.6 7.8C19.5 16.4 12 21 12 21z"/></svg>',
+  check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  wa: '<svg width="50" height="50" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1-.2-.1-1-.4-2-1.2-.7-.6-1.2-1.4-1.3-1.7-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.7.3-.2.2-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9 1.6.7 2.3.8 3.1.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>',
+  send: '<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>',
+};
+const LOGO_SVG = (sw = 8.5, col = "currentColor") => `<svg viewBox="0 0 64 64" fill="none" style="width:100%;height:100%;overflow:visible"><g stroke="${col}" stroke-width="${sw}" stroke-linecap="round">
+<line class="lg" x1="32" y1="7" x2="32" y2="57"/><line class="lg" x1="7" y1="32" x2="57" y2="32"/>
+<line class="lg" x1="14.3" y1="14.3" x2="49.7" y2="49.7"/><line class="lg" x1="49.7" y1="14.3" x2="14.3" y2="49.7"/></g></svg>`;
+
+/* ═══════════════════ CURSOS (dados reais da plataforma) ═══════════════════ */
+const C = {
+  finch:   { t: "Thiago Finch", s: "Funnel Bureau", big: "FUNNEL\nBUREAU", a: "Marketing Digital", n: 15, g: ["#1b0903", "#ff5a1f", "#ffb347"] },
+  caio:    { t: "Caio Martins", s: "Marketing Digital", big: "CAIO\nMARTINS", a: "Marketing Digital", n: 39, g: ["#12062b", "#7c3aed", "#c4b5fd"] },
+  bessan:  { t: "Do Zero aos 1000 USD", s: "Matheus Bessan", big: "0 → 1000\nUSD", a: "Marketing Digital", n: 74, g: ["#02140c", "#059669", "#6ee7b7"] },
+  outbox:  { t: "Outbox Club", s: "Marketing Digital", big: "OUTBOX\nCLUB", a: "Marketing Digital", n: 53, g: ["#0a0a0a", "#ca8a04", "#fde047"] },
+  enrico:  { t: "Marketing & Copywriting", s: "Enrico · ZDMPLAY", big: "COPY\nWRITING", a: "Marketing Digital", n: 70, g: ["#1a0216", "#db2777", "#f9a8d4"] },
+  cripto:  { t: "Virando Investidor em Cripto", s: "Mentoria", big: "CRIPTO\nMOEDAS", a: "Criptomoedas e Investimentos", n: 113, g: ["#140d01", "#d97706", "#fcd34d"] },
+  tiktok:  { t: "Faturando em Dólar com TikTok", s: "Comunidade", big: "TIKTOK\nSHOP", a: "TikTok Shop", n: 43, g: ["#01040f", "#0891b2", "#f0abfc"] },
+  claude:  { t: "Curso Claude Pro", s: "Vibe Coder", big: "CLAUDE\nPRO", a: "Vibe Coder & Programação", n: 69, g: ["#1c0b05", "#c2410c", "#fdba74"] },
+  lovable: { t: "Lovable Pro", s: "Vibe Coder", big: "LOVABLE\nPRO", a: "Vibe Coder & Programação", n: 90, g: ["#1a0410", "#e11d48", "#fb923c"] },
+  andro:   { t: "Método Andromeda", s: "Tráfego Pago", big: "ANDRO\nMEDA", a: "Tráfego Pago", n: 49, g: ["#010422", "#1d4ed8", "#93c5fd"] },
+  film:    { t: "FilmBoss + IA Vídeo", s: "IA Skills", big: "FILM\nBOSS", a: "Criação de Conteúdo IA", n: 70, g: ["#0a0505", "#b91c1c", "#fca5a5"] },
+  criador: { t: "Criador Criativo", s: "Conteúdo", big: "CRIADOR\nCRIATIVO", a: "Criação de Conteúdo IA", n: 40, g: ["#02110f", "#0d9488", "#5eead4"] },
+  gads:    { t: "Google Ads", s: "Tráfego Pago", big: "GOOGLE\nADS", a: "Tráfego Pago", n: 7, g: ["#03081a", "#2563eb", "#a5f3fc"] },
+  vendas:  { t: "Processo de Vendas", s: "Vendas", big: "VENDAS", a: "Vendas", n: 6, g: ["#0b0f1a", "#4f46e5", "#c7d2fe"] },
+  nichos:  { t: "Nichos que Faturam", s: "Ofertas & Nichos", big: "NICHOS", a: "Marketing Digital", n: 74, g: ["#06120a", "#16a34a", "#bef264"] },
+};
+function cover(key, opts = {}) {
+  const c = C[key]; const [a, b, h] = c.g;
+  const size = opts.size || 0.142;
+  return `<div class="cover">
+    <div class="bgx" style="background:
+      radial-gradient(circle at 78% 22%, ${h}cc 0, ${b}88 18%, transparent 46%),
+      radial-gradient(circle at 15% 90%, ${b}aa 0, transparent 45%),
+      linear-gradient(135deg, ${a} 0%, ${a} 30%, ${b} 120%)"></div>
+    <div class="lines"></div>
+    <div class="orb" style="right:8%;top:14%;width:22%;height:39%;background:radial-gradient(circle at 35% 35%, #fff8, ${h}55 40%, transparent 70%)"></div>
+    <div class="shade"></div>
+    ${opts.noBig ? "" : `<div class="tag">Insight Academia · ${c.s}</div>`}
+    ${opts.noBig ? "" : `<div class="big" style="font-size:${size}em">${c.big}</div>`}
+  </div>`;
+}
+
+/* ═══════════════════ CONSTRUÇÃO DO DOM ═══════════════════ */
+const world = document.getElementById("world");
+const capsEl = document.getElementById("caps");
+const $ = (html) => { const d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstElementChild; };
+const add = (html, parent = world) => { const el = $(html); parent.appendChild(el); return el; };
+
+/* Gancho: tags de preço */
+const PRECOS = [["€ 497", "Curso de tráfego"], ["€ 997", "Mentoria VIP"], ["€ 1.997", "Formação completa"], ["15.000 MT", "Curso de cripto"],
+  ["€ 297", "Masterclass"], ["€ 2.500", "Imersão"], ["€ 147", "Workshop"], ["9.900 MT", "Curso TikTok"], ["€ 697", "Copywriting"]];
+const tags = PRECOS.map(([p, n], i) => add(`<div class="ptag"><div class="hole"></div><small>CURSO ONLINE</small><b>${p}</b><em>${n} · 1 ano</em><div class="bc"></div></div>`));
+const hookCounter = add(`<div class="abs disp" style="left:0;right:0;top:250px;text-align:center;color:#ff4d5e;font-weight:700;font-size:44px;letter-spacing:.24em">
+  <div style="font-size:24px;opacity:.75;letter-spacing:.34em">JÁ GASTASTE</div><div id="hookN" style="font-size:150px;letter-spacing:-.03em;text-shadow:0 0 60px rgba(255,40,70,.7)">€ 0</div></div>`, document.getElementById("caps"));
+
+/* Logo */
+const logo = add(`<div class="abs" style="left:0;top:0;width:1080px;height:1920px">
+  <div id="lgMark" class="abs" style="left:390px;top:640px;width:300px;height:300px;color:#fff">${LOGO_SVG(7)}</div>
+  <div id="lgWord" class="abs disp" style="left:0;right:0;top:1010px;text-align:center;color:#fff;font-weight:700;font-size:150px;letter-spacing:-.04em">insight</div>
+  <div id="lgSub" class="abs" style="left:0;right:0;top:1190px;text-align:center;color:#9db3ff;font-weight:600;font-size:34px;letter-spacing:.6em">ACADEMIA</div>
+</div>`);
+
+/* Telemóvel com ecrãs */
+const phone = add(`<div class="phone"><div class="screen" id="screen">
+  <div class="island"></div><div class="glare"></div>
+</div></div>`);
+const screen = phone.querySelector("#screen");
+const status = `<div class="status"><span>9:41</span><span style="display:flex;gap:6px;align-items:center">
+  <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2" width="3" height="10" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>
+  <svg width="26" height="13" viewBox="0 0 26 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="17" height="9" rx="2" fill="currentColor"/><rect x="23.5" y="4" width="2" height="5" rx="1" fill="currentColor" opacity=".5"/></svg></span></div>`;
+const AREAS = [["💻", "Vibe Coder & Programação", "finch", 2, 159, "claude"], ["📣", "Marketing Digital", "finch", 5, 251, "finch"], ["🪙", "Criptomoedas e Investimentos", "cripto", 1, 113, "cripto"],
+  ["🎵", "TikTok Shop", "tiktok", 1, 43, "tiktok"], ["🎬", "Criação de Conteúdo IA", "film", 2, 110, "film"], ["📈", "Tráfego Pago", "andro", 2, 56, "andro"]];
+const scrHome = add(`<div class="scr">${status}
+  <div class="hdr"><span class="ic">${I.menu}</span><span style="flex:1">Início</span><span class="ic">${I.bell}</span><span class="av">IA</span></div>
+  <div class="body" id="homeBody">
+    <div class="hero"><div style="font-size:11px;letter-spacing:.16em;font-weight:600;opacity:.75">INSIGHT ACADEMIA</div>
+      <div class="disp" style="font-size:24px;font-weight:700;margin-top:6px">Olá, bem-vindo 👋</div>
+      <div style="font-size:13px;opacity:.88;margin-top:6px">Escolhe uma área para veres os cursos e começares a aprender.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px">
+        <span class="chip">${I.cap} ${TOTAL_CURSOS} cursos</span><span class="chip">${I.book} ${TOTAL_AULAS} aulas</span><span class="chip">${I.trophy} Ranking</span></div>
+      <div style="margin-top:14px;display:flex;justify-content:space-between;font-size:11px;opacity:.85"><span>O teu progresso</span><span>32%</span></div>
+      <div class="bar" style="background:rgba(255,255,255,.25);margin-top:4px"><i style="width:32%;background:#fff"></i></div>
+    </div>
+    <div class="h2">Escolhe uma área</div>
+    ${AREAS.map(([ic, t, , nc, na, ck]) => `<div class="card seccard" style="margin-bottom:12px"><div class="cv" style="font-size:372px">${cover(ck)}<div class="shade2"></div>
+      <span class="ico">${ic}</span><div class="tt"><b>${t}</b><span>${nc} ${nc > 1 ? "cursos" : "curso"} · ${na} aulas</span></div></div></div>`).join("")}
+  </div></div>`, screen);
+
+const SEC_CURSOS = ["finch", "caio", "bessan", "outbox", "enrico"];
+const cursoCard = (key, pct) => { const c = C[key]; return `<div class="card" style="margin-bottom:12px"><div style="position:relative;aspect-ratio:16/9;font-size:372px">${cover(key)}</div>
+  <div style="padding:12px 14px"><div style="display:flex;gap:6px;align-items:center"><span class="badge" style="background:#dcfce7;color:#15803d">Iniciante</span>
+  <span style="display:inline-flex;gap:1px">${I.heart.repeat(5)}</span></div>
+  <div class="disp" style="font-weight:700;font-size:16px;margin-top:6px">${c.t}</div>
+  <div style="font-size:12px;color:var(--mid);margin-top:2px">${c.n} aulas · ${c.s}</div>
+  <div class="bar" style="margin-top:10px"><i style="width:${pct}%"></i></div></div></div>`; };
+const scrSec = add(`<div class="scr">${status}
+  <div class="hdr"><span class="ic">${I.back}</span><span style="flex:1">Secção</span><span class="ic">${I.bell}</span><span class="av">IA</span></div>
+  <div class="body" id="secBody"><div style="display:flex;align-items:center;gap:10px;margin:2px 2px 4px"><span style="font-size:26px">📣</span>
+    <div><div class="disp" style="font-weight:700;font-size:21px">Marketing Digital</div><div style="font-size:12px;color:var(--mid)">5 cursos · 251 aulas</div></div></div>
+    <div style="height:10px"></div>${SEC_CURSOS.map((k, i) => cursoCard(k, [40, 12, 66, 5, 0][i])).join("")}</div></div>`, screen);
+
+const LICOES = [["Boas-Vindas ao Funnel Bureau", "4:12"], ["Por Que Usar o ClickMax", "8:40"], ["ClickMax: Tudo numa Só Ferramenta", "11:05"], ["Desenhando Funis no Miro", "9:31"]];
+const LICOES2 = [["Por Que as Vendas Não Acontecem", "7:22"], ["O Que São Funis de Vendas", "12:48"], ["Foco no Valor para o Cliente", "6:10"]];
+const scrCurso = add(`<div class="scr">${status}
+  <div class="hdr"><span class="ic">${I.back}</span><span style="flex:1">Curso</span><span class="ic">${I.bell}</span><span class="av">IA</span></div>
+  <div class="body" style="padding:12px">
+    <div id="miniPlayer" style="position:relative;width:376px;height:211.5px;border-radius:16px;overflow:hidden;font-size:376px;background:#000">${cover("finch")}
+      <div id="mpDim" style="position:absolute;inset:0;background:rgba(0,0,0,.35)"></div>
+      <div id="mpPlay" style="position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px;border-radius:50%;background:rgba(255,255,255,.92);color:#000;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.35)"><span style="width:26px;height:26px;margin-left:4px">${I.play}</span></div>
+      <div id="mpLabel" style="position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;font-size:13px;font-weight:500">Começar curso</div>
+    </div>
+    <div class="disp" style="font-weight:700;font-size:22px;margin:14px 2px 2px">Thiago Finch</div>
+    <div style="font-size:12px;color:var(--mid);margin:0 2px;display:flex;gap:8px;align-items:center">15 aulas · Iniciante <span style="display:inline-flex;gap:1px">${I.heart.repeat(5)}</span></div>
+    <div class="card" style="margin-top:14px">
+      <div style="padding:12px 14px"><div style="font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--accent)">MÓDULO 1</div>
+        <div class="disp" style="font-weight:700;font-size:15px">Introdução ao Funnel Bureau</div></div>
+      ${LICOES.map(([t, d], i) => `<div class="lesson" id="les${i}"><span class="n">${i + 1}</span><span class="t">${t}</span><span class="d">${d}</span></div>`).join("")}
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div style="padding:12px 14px"><div style="font-size:10px;letter-spacing:.14em;font-weight:700;color:var(--accent)">MÓDULO 2</div>
+        <div class="disp" style="font-weight:700;font-size:15px">Fundamentos de Funis</div></div>
+      ${LICOES2.map(([t, d], i) => `<div class="lesson"><span class="n">${i + 5}</span><span class="t">${t}</span><span class="d">${d}</span></div>`).join("")}
+    </div>
+  </div></div>`, screen);
+
+const scrWa = add(`<div class="scr" style="background:#efeae2">${status}
+  <div style="position:absolute;top:50px;left:0;right:0;height:64px;background:#075e54;color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px">
+    <span style="opacity:.9">${I.back}</span><span style="width:38px;height:38px;border-radius:50%;background:#fff;color:var(--accent);display:grid;place-items:center;padding:8px">${LOGO_SVG(9, "#0033ff")}</span>
+    <div><div style="font-weight:600;font-size:16px">Insight Academia</div><div style="font-size:12px;opacity:.8">online</div></div></div>
+  <div style="position:absolute;top:114px;left:0;right:0;bottom:0;background:
+      radial-gradient(circle at 20% 30%, rgba(0,0,0,.035) 0 2px, transparent 3px) 0 0/34px 34px, #efeae2"></div>
+  <div style="position:absolute;top:140px;left:50%;transform:translateX(-50%);background:#fff;border-radius:8px;padding:4px 10px;font-size:11px;color:#667">HOJE</div>
+  <div id="waIn" style="position:absolute;top:182px;left:14px;max-width:270px;background:#fff;border-radius:0 12px 12px 12px;padding:9px 12px;font-size:14px;line-height:1.35;box-shadow:0 1px 1px rgba(0,0,0,.08)">
+    Olá! 👋 Queres acesso à Insight Academia? Envia <b>QUERO ACESSO</b>.<div style="text-align:right;font-size:10px;color:#889;margin-top:2px">10:24</div></div>
+  <div id="waOut" style="position:absolute;top:268px;right:14px;background:#d9fdd3;border-radius:12px 0 12px 12px;padding:9px 12px;font-size:16px;font-weight:600;box-shadow:0 1px 1px rgba(0,0,0,.08)">
+    <span id="waTxt"></span><span style="font-size:10px;color:#889;margin-left:8px;font-weight:400">10:25</span> <span id="waTick" style="display:inline-flex;color:#8a9;vertical-align:-3px">${I.check}<span style="margin-left:-10px">${I.check}</span></span></div>
+  <div style="position:absolute;left:8px;right:8px;bottom:22px;display:flex;gap:8px;align-items:center">
+    <div style="flex:1;height:48px;border-radius:24px;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16px;color:#223"><span id="waTyping"></span><span id="waCaret" style="width:2px;height:22px;background:#0a7;margin-left:1px"></span></div>
+    <div id="waSend" style="width:48px;height:48px;border-radius:50%;background:#00a884;display:grid;place-items:center">${I.send}</div></div>
+</div>`, screen);
+const SCREENS = { home: scrHome, sec: scrSec, curso: scrCurso, wa: scrWa };
+
+/* Cartões flutuantes (cena "influencers") */
+const FLOAT = [
+  ["finch", 540, 560, 260, -3], ["caio", 250, 900, -120, 7], ["bessan", 835, 930, -60, -7], ["outbox", 290, 1360, 40, 5], ["enrico", 800, 1390, 130, -6],
+];
+const fcards = FLOAT.map(([key]) => add(`<div class="fcard"><div class="cv">${cover(key)}</div><div class="info"><b>${C[key].t}</b><span>${C[key].n} aulas · ${C[key].s}</span></div></div>`));
+
+/* Leitor grande (play) */
+const big = add(`<div class="bigplayer"><div id="bpInner" style="position:absolute;inset:0;font-size:1080px">
+  <div id="bpCover" style="position:absolute;inset:0;font-size:1080px">${cover("finch", { noBig: true })}</div>
+  <div id="bpTitle" class="abs" style="left:7%;top:12%;color:#fff">
+     <div style="font-size:22px;letter-spacing:.3em;font-weight:600;opacity:.85">MÓDULO 1 · AULA 1</div>
+     <div class="disp" style="font-size:58px;font-weight:700;letter-spacing:-.02em;margin-top:6px">Boas-Vindas ao<br/>Funnel Bureau</div></div>
+  <div id="bpSub" class="abs" style="left:0;right:0;bottom:78px;text-align:center"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Bem-vindo… esta é mais uma aula.</span></div>
+  <div class="abs" style="left:24px;right:24px;bottom:22px;display:flex;align-items:center;gap:16px;color:#fff;font-size:20px">
+    <span style="width:22px;height:22px">${I.play}</span><span id="bpTime">0:00 / 4:12</span>
+    <div style="flex:1;height:6px;border-radius:9px;background:rgba(255,255,255,.3);overflow:hidden"><i id="bpBar" style="display:block;height:100%;width:0;background:#4668f4"></i></div>
+  </div>
+</div></div>`);
+
+const finger = add(`<div class="finger"></div>`);
+const ripple = add(`<div class="ripple"></div>`);
+
+/* Carrossel de áreas */
+const CAR = [["cripto", "Criptomoedas"], ["tiktok", "TikTok Shop"], ["enrico", "Marketing Digital"], ["claude", "Vibe Coding"], ["andro", "Tráfego Pago"], ["film", "Conteúdo com IA"], ["nichos", "Nichos"]];
+const ring = add(`<div class="ring"></div>`);
+const ccards = CAR.map(([key, area]) => add(`<div class="ccard"><div class="cv">${cover(key)}</div><div class="info">
+  <div class="area">${C[key].a}</div><div class="tit">${C[key].t}</div><div class="meta">${C[key].n} aulas · ${C[key].s}</div></div></div>`, ring));
+const carLabel = add(`<div class="abs disp" style="left:0;right:0;top:1340px;height:200px;text-align:center;color:#fff;font-weight:700"></div>`);
+const carLabels = CAR.map(([, area], i) => add(`<div class="abs" style="left:0;right:0;top:0;font-size:120px;letter-spacing:-.035em;line-height:1">${area}</div>`, carLabel));
+const carCount = add(`<div class="kicker" style="top:1520px"></div>`);
+const carCountWord = add(`<div class="kicker" style="top:240px">Cursos disponíveis</div>`);
+
+/* Números */
+const num = add(`<div class="abs" style="left:0;right:0;top:420px;text-align:center;color:#fff">
+  <div id="numN" class="disp" style="font-size:330px;font-weight:700;letter-spacing:-.06em;line-height:.9;text-shadow:0 0 90px rgba(60,100,255,.75)">0</div>
+  <div class="kicker" style="position:static;margin-top:18px;font-size:36px;color:#9db3ff">aulas · ${TOTAL_CURSOS} cursos</div></div>`);
+const chips = [
+  add(`<div class="uichip" style="width:420px"><div class="lbl">Módulos</div>
+    <div style="margin-top:12px;display:grid;gap:10px;font-size:21px">
+    <div style="display:flex;gap:10px;align-items:center"><span class="lesson n" style="all:unset;width:30px;height:30px;border-radius:50%;background:#e6ecff;color:#0033ff;display:grid;place-items:center;font-size:15px;font-weight:700">1</span>Introdução</div>
+    <div style="display:flex;gap:10px;align-items:center"><span style="width:30px;height:30px;border-radius:50%;background:#e6ecff;color:#0033ff;display:grid;place-items:center;font-size:15px;font-weight:700">2</span>Fundamentos</div>
+    <div style="display:flex;gap:10px;align-items:center"><span style="width:30px;height:30px;border-radius:50%;background:#e6ecff;color:#0033ff;display:grid;place-items:center;font-size:15px;font-weight:700">3</span>Escala</div></div></div>`),
+  add(`<div class="uichip" style="width:380px"><div class="lbl">O teu progresso</div><div class="disp" style="font-size:64px;font-weight:700;margin-top:4px"><span id="pgN">0</span>%</div>
+    <div class="bar" style="height:12px;margin-top:8px"><i id="pgBar" style="width:0"></i></div></div>`),
+  add(`<div class="uichip" style="width:360px"><div class="lbl">Ranking semanal</div><div style="display:flex;align-items:flex-end;gap:12px;margin-top:14px;height:120px">
+    <div style="flex:1;height:70%;border-radius:12px 12px 4px 4px;background:#c7d2fe;display:grid;place-items:start center;padding-top:6px;font-size:28px">🥈</div>
+    <div style="flex:1;height:100%;border-radius:12px 12px 4px 4px;background:#0033ff;display:grid;place-items:start center;padding-top:6px;font-size:28px">🥇</div>
+    <div style="flex:1;height:52%;border-radius:12px 12px 4px 4px;background:#e0e7ff;display:grid;place-items:start center;padding-top:6px;font-size:28px">🥉</div></div></div>`),
+  add(`<div class="uichip" style="width:430px"><div class="lbl">Comunidade</div>
+    <div style="margin-top:12px;background:#eef2f9;border-radius:16px;padding:12px 14px;font-size:20px">Acabei o módulo 2 🔥 já fiz a 1.ª venda!</div>
+    <div style="margin-top:8px;margin-left:60px;background:#0033ff;color:#fff;border-radius:16px;padding:12px 14px;font-size:20px">Boa!! 👏👏</div></div>`),
+  add(`<div class="uichip" style="width:420px;text-align:center"><div style="font-size:64px">📱 💻</div><div class="disp" style="font-size:30px;font-weight:700;margin-top:6px">Telemóvel ou computador</div></div>`),
+];
+
+/* Contraste */
+const vsOne = add(`<div class="abs" style="left:240px;top:330px;width:600px">
+  <div style="position:relative;width:600px;height:338px;border-radius:24px;overflow:hidden;font-size:600px;filter:saturate(.5)">${cover("gads")}</div>
+  <div class="disp" style="text-align:center;color:#fff;font-size:92px;font-weight:700;margin-top:16px;position:relative">€ 1.997<div id="vsStrike" style="position:absolute;left:60px;top:50%;height:12px;width:0;background:#ff3b4e;border-radius:9px;box-shadow:0 0 30px #ff3b4e"></div></div>
+  <div class="kicker" style="position:static;margin-top:6px">1 só curso</div></div>`);
+const GRID = ["finch", "caio", "bessan", "outbox", "enrico", "cripto", "tiktok", "claude", "lovable", "andro", "film", "criador"];
+const vsGrid = add(`<div class="abs" style="left:60px;top:1060px;width:960px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
+  ${GRID.map(k => `<div class="g" style="position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;font-size:308px">${cover(k)}</div>`).join("")}</div>`);
+const gcells = [...vsGrid.querySelectorAll(".g")];
+
+/* CTA */
+const ctaLogo = add(`<div class="abs" style="left:0;right:0;top:150px;display:flex;justify-content:center;align-items:center;gap:22px;color:#fff">
+  <div style="width:92px;height:92px;color:#4d74ff">${LOGO_SVG(8.5)}</div>
+  <div><div class="disp" style="font-size:76px;font-weight:700;letter-spacing:-.04em;line-height:.9">insight</div>
+  <div style="font-size:21px;letter-spacing:.42em;color:#9db3ff;font-weight:600;margin-top:6px">ACADEMIA</div></div></div>`);
+const nPT = add(`<div class="numcard" style="top:1470px"><span class="flag">🇵🇹</span><div><div class="c">PORTUGAL</div><div class="n">${NUM_PT}</div></div><span class="wa">${I.wa}</span></div>`);
+const nMZ = add(`<div class="numcard" style="top:1650px"><span class="flag">🇲🇿</span><div><div class="c">MOÇAMBIQUE</div><div class="n">${NUM_MZ}</div></div><span class="wa">${I.wa}</span></div>`);
+const ctaPill = add(`<div class="abs" style="left:0;right:0;top:1060px;text-align:center">
+  <div class="kicker" style="position:static;font-size:30px;color:#bfffd6">Envia mensagem no WhatsApp</div>
+  <div class="disp" style="display:inline-block;margin-top:24px;background:#25d366;color:#04210f;font-size:84px;font-weight:700;padding:22px 52px;border-radius:999px;letter-spacing:-.02em;box-shadow:0 0 80px rgba(37,211,102,.55)">QUERO ACESSO</div></div>`);
+const ctaTag = add(`<div class="abs disp" style="left:0;right:0;top:760px;text-align:center;color:#fff;font-size:76px;font-weight:700;letter-spacing:-.03em;line-height:1.02">Aprende com<br/><span style="color:#7ea0ff">os melhores.</span></div>`);
+
+/* ═══════════════════ LEGENDAS (sincronizadas com a voz) ═══════════════════ */
+const CAPS = window.CAPS || [
+  // [início, fim, texto, y, tamanho]  — *palavra* = destaque azul, !palavra! = vermelho, _palavra_ = verde
+  [0.35, 2.0, "Pára um segundo.", 880, 110],
+  [2.1, 5.0, "Quanto já gastaste em cursos… que !nunca! acabaste?", 1360, 84],
+  [5.5, 8.5, "Isto é a *Insight* *Academia.*", 1470, 76],
+  [8.8, 11.6, "Uma só plataforma…", 150, 84],
+  [11.6, 14.4, "com os cursos dos *maiores* *nomes* do digital.", 140, 72],
+  [14.6, 19.3, "Vários influencers. *Um* *só* *lugar.*", 150, 72],
+  [19.6, 22.4, "Carregas no *play*…", 150, 92],
+  [22.5, 26.4, "e estás *dentro.*", 150, 92],
+  [37.6, 39.2, "Mais de", 330, 64],
+  [39.3, 43.3, "organizadas por módulos, com *progresso*, *ranking* e *comunidade.*", 1735, 54],
+  [43.6, 45.6, "Enquanto uns pagam milhares por !um! !só! curso…", 140, 66],
+  [45.6, 47.4, "tu tens *todos.*", 860, 108],
+  [47.7, 50.4, "Queres entrar?", 900, 120],
+];
+const capEls = CAPS.map(([, , txt, y, sz]) => {
+  const words = txt.split(" ").map(w => {
+    let cls = "w"; if (/^\*.*\*[.…,?!]?$/.test(w)) { cls += " hl"; w = w.replace(/\*/g, ""); }
+    else if (/^!.*![.…,?]?$/.test(w)) { cls += " red"; w = w.replace(/!/g, ""); }
+    else if (/^_.*_[.…,?!]?$/.test(w)) { cls += " grn"; w = w.replace(/_/g, ""); }
+    return `<span class="${cls}">${w}</span>`;
+  }).join(" ");
+  return add(`<div class="cap" style="top:${y}px;font-size:${sz}px">${words}</div>`, capsEl);
+});
+
+/* ═══════════════════ FUNDO + PARTÍCULAS + GRÃO ═══════════════════ */
+const bg = document.getElementById("bg").getContext("2d");
+const fx = document.getElementById("fx").getContext("2d");
+const R = rng(7);
+const DUST = Array.from({ length: 70 }, () => ({ x: R() * 1080, y: R() * 1920, r: 2 + R() * 9, z: R(), sp: 4 + R() * 14, ph: R() * 6.28 }));
+const grain = document.createElement("canvas"); grain.width = grain.height = 256;
+{ const g = grain.getContext("2d"); const id = g.createImageData(256, 256); const r2 = rng(3);
+  for (let i = 0; i < id.data.length; i += 4) { const v = r2() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 22; }
+  g.putImageData(id, 0, 0); }
+
+function drawBg(t, hue) {
+  // hue: {a: cor principal, b: secundária, k: intensidade}
+  bg.fillStyle = "#03060f"; bg.fillRect(0, 0, 1080, 1920);
+  const blobs = [
+    [540 + Math.sin(t * .23) * 260, 520 + Math.cos(t * .17) * 160, 900, hue.a, hue.k],
+    [300 + Math.cos(t * .19) * 200, 1500 + Math.sin(t * .21) * 180, 820, hue.b, hue.k * .8],
+    [880, 1100 + Math.sin(t * .3) * 200, 600, hue.a, hue.k * .5],
+  ];
+  for (const [x, y, r, c, a] of blobs) {
+    const g = bg.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, c.replace("A", (.55 * a).toFixed(3))); g.addColorStop(1, c.replace("A", "0"));
+    bg.fillStyle = g; bg.fillRect(0, 0, 1080, 1920);
+  }
+  // grelha de perspetiva subtil
+  bg.save(); bg.globalAlpha = .07 * hue.k; bg.strokeStyle = "#6f8cff"; bg.lineWidth = 1.5;
+  const off = (t * 24) % 120;
+  for (let y = 1250 + off; y < 1920; y += 120) { const p = (y - 1250) / 670; bg.globalAlpha = .1 * p * hue.k; bg.beginPath(); bg.moveTo(0, y); bg.lineTo(1080, y); bg.stroke(); }
+  bg.restore();
+}
+function drawFx(t, frame, dustA) {
+  fx.clearRect(0, 0, 1080, 1920);
+  // poeira em câmara lenta (bokeh)
+  for (const d of DUST) {
+    const y = ((d.y - t * d.sp * (0.4 + d.z)) % 1920 + 1920) % 1920;
+    const x = d.x + Math.sin(t * .3 + d.ph) * 30;
+    const a = (0.08 + d.z * .25) * dustA * (0.6 + .4 * Math.sin(t * .8 + d.ph));
+    const g = fx.createRadialGradient(x, y, 0, x, y, d.r * (1 + d.z * 2));
+    g.addColorStop(0, `rgba(170,195,255,${a})`); g.addColorStop(1, "rgba(170,195,255,0)");
+    fx.fillStyle = g; fx.beginPath(); fx.arc(x, y, d.r * (1 + d.z * 2), 0, 6.283); fx.fill();
+  }
+  // grão de filme
+  const r3 = rng(frame * 977 + 1);
+  fx.save(); fx.globalCompositeOperation = "overlay";
+  const pat = fx.createPattern(grain, "repeat"); fx.translate(-r3() * 256, -r3() * 256);
+  fx.fillStyle = pat; fx.fillRect(0, 0, 1080 + 256, 1920 + 256); fx.restore();
+}
+
+/* ═══════════════════ HELPERS DE ESTILO ═══════════════════ */
+function st(el, o) {
+  const s = el.style;
+  if ("op" in o) { s.opacity = o.op; s.visibility = o.op <= 0.001 ? "hidden" : "visible"; }
+  if ("tf" in o) s.transform = o.tf;
+  if ("blur" in o) s.filter = o.blur > 0.05 ? `blur(${o.blur.toFixed(2)}px)` : "none";
+  if ("l" in o) s.left = o.l + "px"; if ("t" in o) s.top = o.t + "px";
+  if ("w" in o) s.width = o.w + "px"; if ("h" in o) s.height = o.h + "px";
+}
+const hide = el => st(el, { op: 0 });
+function showScreen(name, x = 0) {
+  for (const [n, el] of Object.entries(SCREENS)) {
+    if (n === name) st(el, { op: 1, tf: `translateX(${x}px)` }); else hide(el);
+  }
+}
+/** Palavras a entrar em cascata (blur → nítido) com saída rápida. */
+function caption(i, t) {
+  const [a, b] = CAPS[i]; const el = capEls[i];
+  if (t < a - .05 || t > b + .45) { hide(el); return; }
+  st(el, { op: 1 });
+  const ws = el.children; const n = ws.length;
+  const out = P(t, b, b + .35, "in");
+  for (let j = 0; j < n; j++) {
+    const p = P(t, a + j * .075, a + j * .075 + .7, "slow");
+    const ty = (1 - p) * 60 - out * 30, sc = .92 + .08 * p;
+    ws[j].style.opacity = p * (1 - out);
+    ws[j].style.transform = `translateY(${ty}px) scale(${sc})`;
+    const bl = (1 - p) * 14 + out * 10;
+    ws[j].style.filter = bl > .1 ? `blur(${bl}px)` : "none";
+  }
+}
+
+/* Telemóvel: posição no palco (centro), escala e rotação 3D */
+function placePhone(cx, cy, s, rx = 0, ry = 0, rz = 0, z = 0, op = 1, blur = 0) {
+  st(phone, { op, blur, tf: `translate(${cx - 214}px, ${cy - 447}px) translateZ(${z}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${s})` });
+}
+/* Converte coordenadas do ecrã do telemóvel (400×866) para o palco, com o telemóvel plano. */
+const scrToStage = (cx, cy, s, x, y) => [cx + (x - 200) * s, cy + (y - 433) * s];
+
+function tap(t, t0, x, y) { // ripple de toque
+  const p = P(t, t0, t0 + .55, "out");
+  if (t < t0 || t > t0 + .55) { hide(ripple); return; }
+  st(ripple, { op: 1 - p, tf: `translate(${x}px, ${y}px) scale(${1 + p * 1.6})` });
+}
+function arcPath(p, x0, y0, x1, y1, bend = 120) { // cursor em arco
+  const mx = (x0 + x1) / 2 + bend, my = (y0 + y1) / 2 - bend * .6;
+  const q = 1 - p; return [q * q * x0 + 2 * q * p * mx + p * p * x1, q * q * y0 + 2 * q * p * my + p * p * y1];
+}
+
+/* ═══════════════════ SEEK ═══════════════════ */
+let curFrame = 0;
+function seek(t) {
+  curFrame = Math.round(t * FPS);
+  // esconder tudo por defeito
+  [...world.children].forEach(hide);
+  // fundo por cena
+  let hue = { a: "rgba(0,51,255,A)", b: "rgba(70,104,244,A)", k: 1 };
+  if (t < T.logo) hue = { a: "rgba(255,40,70,A)", b: "rgba(80,10,30,A)", k: .55 + .45 * P(t, 1.8, 4.5) };
+  if (t >= T.cta) hue = { a: "rgba(37,211,102,A)", b: "rgba(0,51,255,A)", k: 1 };
+  drawBg(t, hue);
+
+  /* ── 1. GANCHO ── */
+  hide(hookCounter);
+  if (t < T.logo + .4) {
+    const lt = t - T.hook;
+    const R1 = rng(11);
+    tags.forEach((el, i) => {
+      const x = 90 + R1() * 820, z = -300 + R1() * 900, y0 = -500 - R1() * 900, sp = 150 + R1() * 90, r0 = (R1() - .5) * 40, rs = (R1() - .5) * 18;
+      const appear = 0.25 + i * .18;
+      const y = y0 + (lt - appear + 2.2) * sp * (1 + lt * .02);
+      const blast = P(t, T.logo - .25, T.logo + .35, "in");
+      const zz = z + blast * 2600;
+      const dof = Math.abs(zz - 150) / 90;
+      st(el, { op: clamp((lt - appear) * 2) * (1 - P(t, T.logo + .1, T.logo + .35)),
+        tf: `translate3d(${x - 150}px, ${y}px, ${zz}px) rotateZ(${r0 + rs * lt}deg) rotateX(${12 + lt * 3}deg) rotateY(${(R1() - .5) * 30}deg)`,
+        blur: Math.min(dof, 10) });
+    });
+    // contador vermelho
+    const n = Math.round(k(t, [[2.2, 0], [4.6, 6488, "out"]]));
+    document.getElementById("hookN").textContent = "€ " + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    st(hookCounter, { op: P(t, 2.1, 2.6) * (1 - P(t, T.logo - .2, T.logo)), tf: `scale(${1 + P(t, 2.1, 5.2, "lin") * .08})` });
+  }
+  caption(0, t); caption(1, t);
+
+  /* ── 2. LOGÓTIPO ── */
+  if (t >= T.logo - .1 && t < T.home + .6) {
+    const lt = t - T.logo;
+    const out = P(t, T.home - .2, T.home + .5, "in");
+    st(logo, { op: 1 - out, tf: `scale(${1 + out * .6})`, blur: out * 18 });
+    const mark = document.getElementById("lgMark");
+    mark.querySelectorAll(".lg").forEach((ln, i) => {
+      const p = P(lt, .05 + i * .09, .9 + i * .09, "slow");
+      ln.setAttribute("stroke-dasharray", "60"); ln.setAttribute("stroke-dashoffset", String(60 * (1 - p)));
+    });
+    st(mark, { tf: `rotate(${k(lt, [[0, -120], [2.8, 0, "slow"], [3.6, 12]])}deg) scale(${k(lt, [[0, .6], [1.6, 1, "slow"]])})`,
+      blur: 0 });
+    mark.style.filter = `drop-shadow(0 0 ${30 + 30 * Math.sin(lt * 2)}px rgba(80,120,255,.95))`;
+    const w = document.getElementById("lgWord"), s2 = document.getElementById("lgSub");
+    st(w, { op: P(lt, .5, 1.3), tf: `translateY(${(1 - P(lt, .5, 1.6, "slow")) * 40}px)`, blur: (1 - P(lt, .5, 1.4)) * 16 });
+    st(s2, { op: P(lt, .9, 1.6) });
+    s2.style.letterSpacing = mix(.2, .6, P(lt, .9, 3.4, "slow")) + "em";
+  }
+  caption(2, t);
+
+  /* ── 3. HOME no telemóvel ── */
+  if (t >= T.home - .2 && t < T.sec + .6) {
+    const lt = t - T.home;
+    const cy = k(lt, [[0, 2500], [1.6, 1090, "slow"], [5.9, 1060, "sine"]]);
+    const rx = k(lt, [[0, 38], [1.8, 10, "slow"], [5.9, 6, "sine"]]);
+    const ry = k(lt, [[0, -30], [1.8, -12, "slow"], [5.9, 10, "sine"]]);
+    const s = k(lt, [[0, 1.25], [5.9, 1.48, "sine"]]);
+    placePhone(540, cy, s, rx, ry, k(lt, [[0, 8], [1.8, 0, "slow"]]), 0, 1, Math.max(0, (cy - 1200) / 120));
+    showScreen("home");
+    document.getElementById("homeBody").style.transform = `translateY(${-k(lt, [[1.6, 0], [5.6, 620, "io"]])}px)`;
+  }
+  caption(3, t); caption(4, t);
+
+  /* ── 4. SECÇÃO + cartões a sair em câmara lenta ── */
+  if (t >= T.sec - .1 && t < T.play + .2) {
+    const lt = t - T.sec;
+    const s = k(lt, [[0, 1.48], [5, 1.3, "sine"]]);
+    const dim = P(lt, .5, 1.6);
+    placePhone(540, 1060, s, k(lt, [[0, 6], [5, 14, "sine"]]), k(lt, [[0, 10], [5, -8, "sine"]]), 0, k(lt, [[0, 0], [1.6, -500, "slow"], [4.4, -560], [5, 0, "io"]]),
+      1, dim * 6 * (1 - P(lt, 4.2, 5)));
+    showScreen(lt < .35 ? "home" : "sec", lt < .35 ? -P(lt, 0, .35) * 400 : (1 - P(lt, .35, .8, "out")) * 400);
+    document.getElementById("secBody").style.transform = "translateY(0)";
+    // cartões
+    fcards.forEach((el, i) => {
+      const [, x, y, z, r] = FLOAT[i];
+      const d = i * .12;
+      const p = P(lt, .55 + d, 2.4 + d, "slow");
+      const drift = Math.sin((t + i) * .7) * 14;
+      let X = mix(540, x, p), Y = mix(1000 + i * 40, y, p) + drift, Z = mix(-400, z, p), RZ = mix(0, r, p), S = mix(.45, 1, p);
+      let op = P(lt, .5 + d, .9 + d);
+      // regresso: só o Thiago Finch fica e encaixa no leitor do ecrã seguinte
+      const back = P(lt, 4.0, 5.0, "io");
+      if (i === 0) {
+        const [px, py] = scrToStage(540, 1080, 1.6, 200, 112 + 105.75);
+        X = mix(X, px, back); Y = mix(Y, py, back); Z = mix(Z, 0, back); RZ = mix(RZ, 0, back); S = mix(S, 601.6 / 460, back);
+      } else { op *= 1 - P(lt, 3.6, 4.3); Z -= P(lt, 3.6, 4.6, "in") * 900; }
+      const bl = Math.abs(Z - 200) / 160 * (1 - back);
+      st(el, { op, blur: Math.min(bl, 6) + (1 - p) * 8, tf: `translate3d(${X - 230}px, ${Y - 175}px, ${Z}px) rotateZ(${RZ}deg) rotateY(${(1 - p) * 40 + Math.sin(t * .5 + i) * 4 * (1 - back)}deg) scale(${S})` });
+      if (i === 0) el.querySelector(".info").style.opacity = 1 - back;
+    });
+  }
+  caption(5, t);
+
+  /* ── 5. CURSO → PLAY → AULA ── */
+  const PX = 540, PY = 1080, PS = 1.6;
+  if (t >= T.play - .05 && t < T.car + .3) {
+    const lt = t - T.play;
+    const spin = P(t, T.car - 1.1, T.car + .2, "io");
+    const exB = P(lt, 2.45, 3.3) * (1 - P(t, T.car - 1.3, T.car - .7));
+    placePhone(PX, PY + spin * 60, PS * (1 - spin * .45) * (1 - exB * .08), 0, spin * 360, 0, -spin * 600, (1 - P(t, T.car - .3, T.car + .2)) * (1 - exB * .75), spin * 6 + exB * 14);
+    showScreen("curso");
+    // toques
+    const F0 = [760, 1700], L1 = scrToStage(PX, PY, PS, 190, 486), PL = scrToStage(PX, PY, PS, 200, 112 + 105.75);
+    let fx_ = null;
+    if (lt > .8 && lt < 1.6) fx_ = arcPath(P(lt, .8, 1.5, "io"), ...F0, ...L1, 160);
+    else if (lt >= 1.6 && lt < 2.1) fx_ = arcPath(P(lt, 1.6, 2.1, "io"), ...L1, ...PL, -140);
+    else if (lt >= 2.1 && lt < 2.65) fx_ = PL;
+    if (fx_) {
+      const press = (lt > 1.48 && lt < 1.62) || (lt > 2.25 && lt < 2.4) ? .82 : 1;
+      st(finger, { op: P(lt, .8, 1.0) * (1 - P(lt, 2.45, 2.65)), tf: `translate(${fx_[0]}px, ${fx_[1]}px) scale(${press})` });
+    }
+    tap(lt, 1.5, ...L1); if (lt > 2.2) tap(lt, 2.28, ...PL);
+    const les0 = document.getElementById("les0");
+    les0.style.background = lt > 1.55 ? "#e6ecff" : "transparent";
+    document.getElementById("mpLabel").textContent = lt > 1.55 ? "Aula 1 · Boas-Vindas ao Funnel Bureau" : "Começar curso";
+    document.getElementById("mpPlay").style.transform = `scale(${lt > 2.25 && lt < 2.4 ? .88 : 1})`;
+    // leitor grande: expande em câmara lenta, toca a introdução, depois sai
+    const ex = P(lt, 2.45, 3.5, "slow");
+    const leave = P(t, T.car - 1.4, T.car - .6, "io");
+    if (lt > 2.4 && t < T.car - .5) {
+      const [x0, y0] = scrToStage(PX, PY, PS, 12, 112);
+      const W = mix(601.6, 1080, ex), H = W * 9 / 16;
+      const X = mix(x0, 0, ex), Y = mix(y0, (1920 - H) / 2 + 20, ex);
+      const sh = 1 - leave * .5;
+      st(big, { op: 1 - P(leave, .55, 1), l: X + (W - W * sh) / 2, t: Y + (H - H * sh) / 2 - leave * 120, w: W * sh, h: H * sh, blur: leave * 8,
+        tf: `rotateY(${leave * 25}deg)` });
+      big.style.borderRadius = mix(18, 0, ex) + "px";
+      const pt = Math.max(0, lt - 3.0);
+      document.getElementById("bpInner").style.fontSize = (W * sh) + "px";
+      document.getElementById("bpCover").style.transform = `scale(${1.05 + pt * .03}) translate(${-pt * 6}px, 0)`;
+      st(document.getElementById("bpTitle"), { op: P(lt, 3.2, 3.9) * (1 - P(lt, 5.3, 5.8)), tf: `translateY(${(1 - P(lt, 3.2, 4.2, "slow")) * 30}px) scale(${sh})` });
+      st(document.getElementById("bpSub"), { op: P(lt, 3.9, 4.3) });
+      const secs = Math.min(pt, 4.5);
+      document.getElementById("bpTime").textContent = `0:0${Math.floor(secs)} / 4:12`;
+      document.getElementById("bpBar").style.width = (secs / 252 * 100 * 6) + "%";
+    }
+  }
+  caption(6, t); caption(7, t);
+
+  /* ── 6. CARROSSEL DE ÁREAS (gira em câmara lenta) ── */
+  const STEP = 1.38, F0T = T.car + .6;
+  if (t >= T.car - .4 && t < T.num + .5) {
+    const lt = t - T.car;
+    const enter = P(t, T.car - .3, T.car + 1.0, "slow"), out = P(t, T.num - .3, T.num + .4, "in");
+    // índice ativo, com hold (câmara lenta) e transição suave
+    let idx = 0;
+    for (let i = 1; i < CAR.length; i++) idx += P(t, F0T + i * STEP - .55, F0T + i * STEP + .25, "io");
+    const ang = 360 / CAR.length;
+    const Rr = 820;
+    st(ring, { op: 1 - out, tf: `translateZ(${-Rr - 300 + enter * 300 - out * 900}px) rotateX(${-6 + Math.sin(t * .4) * 2}deg) rotateY(${-idx * ang + (1 - enter) * 90}deg)` });
+    ccards.forEach((el, i) => {
+      const a = ((i - idx) * ang) * Math.PI / 180;
+      const face = Math.cos(a);
+      st(el, { op: clamp(face * 1.4 + .2) * enter, tf: `rotateY(${i * ang}deg) translateZ(${Rr}px) scale(${1 + Math.max(0, face - .9) * 1.2})`,
+        blur: (1 - face) * 7 });
+    });
+    st(carLabel, { op: enter * (1 - out) });
+    carLabels.forEach((el, i) => {
+      const d = Math.abs(idx - i);
+      const p = clamp(1 - d * 1.6);
+      st(el, { op: p, tf: `translateY(${(idx - i) * 120}px) scale(${.85 + .15 * p})`, blur: (1 - p) * 14 });
+      el.style.fontSize = (CAR[i][1].length > 14 ? 96 : 120) + "px";
+    });
+    st(carCount, { op: enter * (1 - out) });
+    carCount.textContent = `Área ${String(Math.round(idx) + 1).padStart(2, "0")} / ${String(CAR.length).padStart(2, "0")}`;
+    st(carCountWord, { op: enter * (1 - out) });
+  }
+
+  /* ── 7. NÚMEROS ── */
+  if (t >= T.num - .2 && t < T.vs + .3) {
+    const lt = t - T.num;
+    const out = P(t, T.vs - .3, T.vs + .2, "in");
+    const n = Math.round(k(lt, [[.3, 0], [1.5, 700, "out"]]));
+    document.getElementById("numN").textContent = n + (lt > 1.5 ? "+" : "");
+    st(num, { op: P(lt, 0, .3) * (1 - out), tf: `scale(${k(lt, [[0, .7], [1.5, 1, "slow"], [6, 1.08, "lin"]])})`, blur: out * 12 });
+    const POS = [[60, 930, -4], [640, 900, 4], [80, 1250, 3], [580, 1230, -3], [320, 1500, 0]];
+    const AT = [1.8, 2.6, 3.2, 3.8, 4.6];
+    chips.forEach((el, i) => {
+      const p = P(lt, AT[i], AT[i] + .9, "slow");
+      const [x, y, r] = POS[i];
+      const fl = Math.sin(t * .9 + i * 1.7) * 10;
+      st(el, { op: p * (1 - out), tf: `translate(${x}px, ${y + (1 - p) * 140 + fl}px) rotate(${r * p}deg) scale(${.8 + .2 * p})`, blur: (1 - p) * 10 + out * 8 });
+    });
+    const pg = Math.round(k(lt, [[2.6, 0], [3.6, 68, "out"]]));
+    document.getElementById("pgN").textContent = pg; document.getElementById("pgBar").style.width = pg + "%";
+  }
+  caption(8, t); caption(9, t);
+
+  /* ── 8. CONTRASTE ── */
+  if (t >= T.vs - .2 && t < T.cta + .3) {
+    const lt = t - T.vs, out = P(t, T.cta - .3, T.cta + .2, "in");
+    st(vsOne, { op: P(lt, 0, .4) * (1 - out) * (1 - P(lt, 2.2, 2.6) * .6), tf: `scale(${k(lt, [[0, .9], [2, 1, "slow"], [2.6, .82]])}) translateY(${-P(lt, 2.1, 2.7) * 60}px)` });
+    document.getElementById("vsStrike").style.width = (P(lt, 1.2, 1.7, "out") * 360) + "px";
+    st(vsGrid, { op: 1 - out });
+    gcells.forEach((el, i) => {
+      const p = P(lt, 1.9 + i * .05, 2.6 + i * .05, "back");
+      st(el, { op: clamp(p * 1.2), tf: `scale(${.6 + .4 * p})` });
+      el.style.boxShadow = `0 0 ${40 * P(lt, 2.4, 3)}px rgba(70,110,255,.8)`;
+    });
+  }
+  caption(10, t); caption(11, t);
+
+  /* ── 9. CTA WhatsApp ── */
+  if (t >= T.cta - .1) {
+    const lt = t - T.cta;
+    const ph = P(lt, .1, 1.6, "slow");
+    const phOut = P(lt, 6.0, 6.8, "io");
+    placePhone(540, mix(1900, 1080, ph) - phOut * 80, mix(1.05, 1.0, ph) * (1 - phOut * .2), mix(30, 4, ph), mix(-20, 0, ph) + Math.sin(t * .6) * 3, 0, 0, 1 - phOut, phOut * 10);
+    showScreen("wa");
+    const msg = "QUERO ACESSO";
+    const typed = Math.floor(clamp((lt - 1.6) / 1.1) * msg.length);
+    const sent = lt > 3.0;
+    document.getElementById("waTyping").textContent = sent ? "" : msg.slice(0, typed);
+    document.getElementById("waCaret").style.opacity = (sent || Math.floor(t * 2) % 2) ? 0 : 1;
+    document.getElementById("waTxt").textContent = msg;
+    st(document.getElementById("waOut"), { op: P(lt, 3.0, 3.25), tf: `translateY(${(1 - P(lt, 3.0, 3.4, "back")) * 30}px)` });
+    document.getElementById("waTick").style.color = lt > 3.7 ? "#53bdeb" : "#8a9";
+    document.getElementById("waSend").style.transform = `scale(${lt > 2.85 && lt < 3.0 ? .85 : 1})`;
+    st(document.getElementById("waIn"), { op: P(lt, .8, 1.1) });
+    const fin = P(lt, 6.2, 7.2, "slow");
+    st(ctaLogo, { op: P(lt, .3, 1.0), tf: `translateY(${(1 - P(lt, .3, 1.4, "slow")) * -40}px)` });
+    st(ctaTag, { op: fin, tf: `translateY(${(1 - fin) * 50}px)`, blur: (1 - fin) * 12 });
+    st(ctaPill, { op: fin, tf: `scale(${.8 + .2 * fin + Math.sin(t * 3) * .012 * fin})` });
+    const n1 = P(lt, 3.6, 4.4, "slow"), n2 = P(lt, 3.9, 4.7, "slow");
+    st(nPT, { op: n1, tf: `translateX(${(1 - n1) * -300}px)`, blur: (1 - n1) * 10 });
+    st(nMZ, { op: n2, tf: `translateX(${(1 - n2) * 300}px)`, blur: (1 - n2) * 10 });
+    const pulse = .5 + .5 * Math.sin(t * 4);
+    nPT.querySelector(".wa").style.boxShadow = nMZ.querySelector(".wa").style.boxShadow = `0 0 ${20 + pulse * 30}px rgba(37,211,102,${.5 + pulse * .4})`;
+  }
+  caption(12, t);
+
+  /* ── flashes nas viragens (speed ramp) ── */
+  const fl = Math.max(...[T.logo, T.home, T.car, T.cta].map(c => Math.exp(-Math.pow((t - c) / .07, 2)) * (t < c ? .35 : 1) * .85));
+  document.getElementById("flash").style.opacity = fl * .55;
+  const fb = Math.max(...[T.sec, T.num, T.vs].map(c => Math.exp(-Math.pow((t - c) / .12, 2))));
+  document.getElementById("flashBlue").style.opacity = fb * .35;
+
+  drawFx(t, curFrame, t < T.logo ? .4 : 1);
+}
+
+window.seek = seek;
+window.DURACAO = DURACAO; window.FPS = FPS;
+window.ready = document.fonts.ready.then(() => { seek(0); return true; });
+</script>
+</body>
+</html>
