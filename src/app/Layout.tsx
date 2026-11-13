@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "./auth";
 import { Logo } from "./components/Logo";
 import { NotificacoesSino } from "./components/NotificacoesSino";
-import { Avatar } from "./components/primitives";
+import { AcessoChip, Avatar } from "./components/primitives";
 
 type ItemNav = { label: string; to: string; icon: LucideIcon; end?: boolean };
 
@@ -218,6 +218,7 @@ export default function Layout() {
             {titulo(location.pathname)}
           </p>
           <div className="ml-auto flex items-center gap-2">
+            {perfil?.plano && <AcessoChip perfil={perfil} />}
             <NotificacoesSino />
             {perfil && <Avatar nome={perfil.nome_completo} tom="solid" />}
           </div>

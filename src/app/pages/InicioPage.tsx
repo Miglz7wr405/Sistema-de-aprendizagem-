@@ -5,7 +5,7 @@ import { primeiroNome } from "@/lib/utils";
 import { PLANO } from "@/lib/types";
 import { useAuth } from "../auth";
 import { progressoDoCurso, SeccaoCard } from "../components/Catalogo";
-import { Button, Carregando, EmptyState, Erro, ProgressBar, SeloPlano } from "../components/primitives";
+import { Button, Carregando, EmptyState, Erro, ProgressBar, SeloPlano, textoAcesso } from "../components/primitives";
 import { useCatalogo } from "../use-catalogo";
 
 export default function InicioPage() {
@@ -56,9 +56,9 @@ export default function InicioPage() {
           {perfil?.plano && (
             <div className="mb-3 flex items-center gap-2">
               <SeloPlano plano={perfil.plano} className="text-sm px-3 py-1" />
-              <span className="text-xs text-white/70">
-                Acesso {PLANO[perfil.plano].selo}
-                {expiraEm && <> · expira {expiraEm}</>}
+              <span className="text-xs font-medium text-white/85">
+                Acesso {PLANO[perfil.plano].selo} · {textoAcesso(perfil)}
+                {perfil.plano !== "legacy" && expiraEm && <> (até {expiraEm})</>}
               </span>
             </div>
           )}

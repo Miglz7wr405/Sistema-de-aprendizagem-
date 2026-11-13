@@ -28,6 +28,30 @@ export function SeloPlano({ plano, className }: { plano?: Plano | null; classNam
   );
 }
 
+/** "Vitalício", "Expirado" ou "N dias" restantes de acesso. */
+export function textoAcesso(p: { plano: Plano; acesso_expira_em: string | null }) {
+  if (p.plano === "legacy" || !p.acesso_expira_em) return "Vitalício";
+  const dias = Math.ceil((new Date(p.acesso_expira_em).getTime() - Date.now()) / 86400000);
+  if (dias < 0) return "Expirado";
+  return `${dias} dia${dias === 1 ? "" : "s"}`;
+}
+
+/** Patente + dias de acesso, para o topo da app. */
+export function AcessoChip({
+  perfil,
+  className,
+}: {
+  perfil: { plano: Plano; acesso_expira_em: string | null };
+  className?: string;
+}) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5", className)} title={`Acesso ${PLANO[perfil.plano]?.selo ?? ""}`}>
+      <SeloPlano plano={perfil.plano} />
+      <span className="whitespace-nowrap text-xs font-medium text-text-mid">{textoAcesso(perfil)}</span>
+    </span>
+  );
+}
+
 export function PageHeader({
   title,
   subtitle,
