@@ -6,12 +6,14 @@ import type {
   Espectador,
   Grupo,
   Membro,
+  MembroPlano,
   Mensagem,
   Modulo,
   Notificacao,
   Perfil,
   Pergunta,
   PeriodoRanking,
+  Plano,
   PosicaoRanking,
   Progresso,
   ResumoGrupo,
@@ -229,6 +231,14 @@ export const Social = {
     const { data, error } = await supabase.rpc("ranking", { p_periodo: periodo });
     falhar(error);
     return (data ?? []) as PosicaoRanking[];
+  },
+  /** Plano (selo) de cada membro aprovado, para mostrar os selos no ranking e no "quem viu". */
+  async planos() {
+    const { data, error } = await supabase.rpc("planos_membros");
+    falhar(error);
+    const mapa: Record<string, Plano> = {};
+    for (const m of (data ?? []) as MembroPlano[]) mapa[m.user_id] = m.plano;
+    return mapa;
   },
 };
 

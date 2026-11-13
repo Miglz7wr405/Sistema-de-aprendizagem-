@@ -48,6 +48,7 @@ import {
   Carregando,
   EmptyState,
   ProgressBar,
+  SeloPlano,
 } from "../components/primitives";
 import { useData } from "../use-data";
 
@@ -322,6 +323,7 @@ function Leitor({ aula }: { aula: Aula }) {
 }
 
 function EspectadoresDaAula({ aula }: { aula: Aula }) {
+  const { data: planos } = useData(() => Social.planos(), []);
   // Recarrega sempre que a aula muda — mostra quem já viu, a todos os membros.
   const { data, loading } = useData(() => Social.quemViu(aula.id), [aula.id]);
   const lista = data ?? [];
@@ -360,8 +362,9 @@ function EspectadoresDaAula({ aula }: { aula: Aula }) {
                   )}
                 </div>
                 <span className="min-w-0">
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex flex-wrap items-center gap-1.5">
                     <span className="truncate text-sm font-medium text-text-hi">{e.nome}</span>
+                    {planos?.[e.user_id] && <SeloPlano plano={planos[e.user_id]} />}
                     {e.papel !== "aluno" && (
                       <Badge className="bg-accent-soft px-1.5 py-0 text-[10px] text-accent">
                         {PAPEL_LABEL[e.papel]}

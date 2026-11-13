@@ -293,7 +293,7 @@ export function PedirAcessoPage() {
 
 /** Conta criada mas ainda não aprovada (ou recusada / bloqueada). */
 export function EstadoContaPage() {
-  const { perfil, sessao, sair, recarregarPerfil } = useAuth();
+  const { perfil, sessao, sair, recarregarPerfil, acessoExpirado } = useAuth();
   const [aVerificar, setAVerificar] = useState(false);
 
   async function verificar() {
@@ -303,10 +303,17 @@ export function EstadoContaPage() {
     toast.message("Ainda à espera. Assim que fores aprovado, entras automaticamente.");
   }
 
-  const estado = perfil?.estado ?? "pendente";
+  const estado = acessoExpirado ? "expirado" : (perfil?.estado ?? "pendente");
   const email = perfil?.email ?? sessao?.user.email;
 
   const conteudo = {
+    expirado: {
+      icone: Ban,
+      cor: "bg-amber-50 text-amber-600",
+      titulo: "O teu acesso terminou",
+      texto:
+        "O período de acesso à academia chegou ao fim. Fala com um administrador da Insight para renovares e voltares a ver as aulas.",
+    },
     pendente: {
       icone: Hourglass,
       cor: "bg-amber-50 text-amber-600",

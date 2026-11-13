@@ -7,7 +7,7 @@ import { Perfis } from "@/lib/db";
 import { PAPEL_LABEL } from "@/lib/types";
 import { useAuth } from "../auth";
 import { Field, Input } from "../components/Modal";
-import { Avatar, Badge, Button, Card, PageHeader } from "../components/primitives";
+import { Avatar, Badge, Button, Card, PageHeader, SeloPlano } from "../components/primitives";
 
 export default function PerfilPage() {
   const { perfil, recarregarPerfil, sair } = useAuth();
@@ -71,7 +71,25 @@ export default function PerfilPage() {
             {perfil.nome_completo}
           </p>
           <p className="truncate text-sm text-text-mid">{perfil.email}</p>
-          <Badge className="mt-1 bg-accent-soft text-accent">{PAPEL_LABEL[perfil.papel]}</Badge>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <Badge className="bg-accent-soft text-accent">{PAPEL_LABEL[perfil.papel]}</Badge>
+            <SeloPlano plano={perfil.plano} />
+          </div>
+          {perfil.papel === "aluno" &&
+            perfil.plano !== "legacy" &&
+            perfil.acesso_expira_em &&
+            (() => {
+              const dias = Math.ceil(
+                (new Date(perfil.acesso_expira_em).getTime() - Date.now()) / 86400000,
+              );
+              return (
+                <p className="mt-1 text-xs text-text-low">
+                  {dias < 0
+                    ? "Acesso expirado — fala com um administrador."
+                    : `Acesso válido por mais ${dias} dia${dias === 1 ? "" : "s"}.`}
+                </p>
+              );
+            })()}
         </div>
       </Card>
 

@@ -1,8 +1,32 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Loader2, Lock } from "lucide-react";
+import { Gem, Loader2, Lock, Medal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import type { Plano } from "@/lib/types";
+import { PLANO } from "@/lib/types";
+
+const SELO_CLASSE: Record<Plano, string> = {
+  semana: "selo-bronze",
+  mes: "selo-prata",
+  ano: "selo-ouro",
+  legacy: "selo-diamante",
+};
+
+/** Selo do plano de acesso, a brilhar (Bronze/Prata/Ouro/Diamante). */
+export function SeloPlano({ plano, className }: { plano?: Plano | null; className?: string }) {
+  if (!plano || !(plano in SELO_CLASSE)) return null;
+  const Icone = plano === "legacy" ? Gem : Medal;
+  return (
+    <span
+      className={cn("selo", SELO_CLASSE[plano], className)}
+      title={`Plano ${PLANO[plano].selo}`}
+    >
+      <Icone className="size-3" />
+      {PLANO[plano].selo}
+    </span>
+  );
+}
 
 export function PageHeader({
   title,

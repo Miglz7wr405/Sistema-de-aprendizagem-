@@ -113,6 +113,67 @@ body {
   animation: page-fade-in 0.4s ease-out both;
 }
 
+/* ── Selos de plano (Bronze/Prata/Ouro/Diamante) a brilhar ── */
+@keyframes selo-brilho {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  60%,
+  100% {
+    transform: translateX(260%) skewX(-20deg);
+  }
+}
+
+.selo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #3a2a00;
+  white-space: nowrap;
+}
+.selo::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 35%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.85),
+    transparent
+  );
+  animation: selo-brilho 2.8s ease-in-out infinite;
+}
+.selo-bronze {
+  background: linear-gradient(135deg, #f0b27a, #cd7f32 55%, #a05a2c);
+  box-shadow: 0 1px 6px rgba(205, 127, 50, 0.45);
+}
+.selo-prata {
+  background: linear-gradient(135deg, #f4f6f8, #c0c6cc 55%, #9aa2aa);
+  color: #2b3138;
+  box-shadow: 0 1px 6px rgba(160, 170, 180, 0.5);
+}
+.selo-ouro {
+  background: linear-gradient(135deg, #ffe58a, #f4c430 55%, #d4a017);
+  box-shadow: 0 1px 8px rgba(244, 196, 48, 0.55);
+}
+.selo-diamante {
+  background: linear-gradient(135deg, #e6fbff, #8ee8ff 45%, #4cc9f0 75%, #b388ff);
+  color: #0a2a3a;
+  box-shadow:
+    0 0 10px rgba(76, 201, 240, 0.6),
+    0 0 18px rgba(179, 136, 255, 0.35);
+}
+
 ::selection {
   background-color: color-mix(in oklab, var(--accent) 35%, transparent);
   color: var(--text-hi);

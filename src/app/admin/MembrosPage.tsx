@@ -3,8 +3,8 @@ import { Ban, Copy, KeyRound, MessageCircle, Search, ShieldCheck, Users } from "
 import { toast } from "sonner";
 
 import { Perfis } from "@/lib/db";
-import type { Papel, Perfil } from "@/lib/types";
-import { PAPEL_LABEL } from "@/lib/types";
+import type { Papel, Perfil, Plano } from "@/lib/types";
+import { PAPEL_LABEL, PLANO, PLANO_LABEL } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
 import { Field, Input, Modal, Select } from "../components/Modal";
@@ -16,7 +16,20 @@ import {
   EmptyState,
   Erro,
   PageHeader,
+  SeloPlano,
 } from "../components/primitives";
+
+/** Texto da validade do acesso de um membro. */
+function validadeAcesso(p: Perfil): { texto: string; expirado: boolean } {
+  if (p.papel !== "aluno" || p.plano === "legacy" || !p.acesso_expira_em) {
+    return { texto: "Permanente", expirado: false };
+  }
+  const fim = new Date(p.acesso_expira_em).getTime();
+  const dias = Math.ceil((fim - Date.now()) / (1000 * 60 * 60 * 24));
+  if (dias < 0) return { texto: "Acesso expirado", expirado: true };
+  if (dias === 0) return { texto: "Expira hoje", expirado: false };
+  return { texto: `Expira em ${dias} dia${dias === 1 ? "" : "s"}`, expirado: false };
+}
 import { useData } from "../use-data";
 import { gerarPalavraPasse, linkWhatsApp, reporPalavraPasse } from "./acoes";
 
@@ -67,6 +80,18 @@ export default function MembrosPage() {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro");
     }
+  }
+
+  // Muda o plano e calcula a nova validade (a partir de agora). Legacy = permanente.
+  async function mudarPlano(p: Perfil, plano: Plano) {
+    const dias = PLANO[plano].dias;
+    const acesso_expira_em =
+      dias === null ? null : new Date(Date.now() + dias * 86400000).toISOString();
+    await mudar(
+      p,
+      { plano, acesso_expira_em },
+      `${p.nome_completo}: plano ${PLANO[plano].selo}${dias ? ` (${dias} dias)` : " (permanente)"}`,
+    );
   }
 
   async function confirmarRepor() {
@@ -139,13 +164,23 @@ export default function MembrosPage() {
               <div key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <Avatar nome={p.nome_completo} />
                 <div className="min-w-[180px] flex-1">
-                  <p className="font-medium text-text-hi">
+                  <p className="flex flex-wrap items-center gap-1.5 font-medium text-text-hi">
                     {p.nome_completo} {souEu && <span className="text-xs text-text-low">(tu)</span>}
+                    {p.estado !== "bloqueado" && <SeloPlano plano={p.plano} />}
                   </p>
                   <p className="truncate text-xs text-text-mid">
                     {p.email}
                     {p.telefone ? ` · ${p.telefone}` : ""}
                   </p>
+                  {p.estado !== "bloqueado" &&
+                    (() => {
+                      const v = validadeAcesso(p);
+                      return (
+                        <p className={cn("text-xs", v.expirado ? "text-red-600" : "text-text-low")}>
+                          {v.texto}
+                        </p>
+                      );
+                    })()}
                 </div>
                 {p.estado === "bloqueado" ? (
                   <Badge className="bg-red-50 text-red-600">Bloqueado</Badge>
@@ -169,6 +204,19 @@ export default function MembrosPage() {
                     <option value="aluno">Aluno</option>
                     <option value="equipa">Equipa Insight</option>
                     <option value="admin">Administrador</option>
+                  </Select>
+                  <Select
+                    aria-label="Plano de acesso"
+                    value={p.plano}
+                    onChange={(e) => mudarPlano(p, e.target.value as Plano)}
+                    className="h-9 w-auto py-1 pr-8 text-xs"
+                    title="Plano de acesso (define o selo e a validade)"
+                  >
+                    {(["semana", "mes", "ano", "legacy"] as Plano[]).map((pl) => (
+                      <option key={pl} value={pl}>
+                        {PLANO[pl].selo} · {PLANO_LABEL[pl]}
+                      </option>
+                    ))}
                   </Select>
                   <Button
                     variant="ghost"

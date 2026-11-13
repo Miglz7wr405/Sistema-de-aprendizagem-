@@ -3,6 +3,7 @@ export type EstadoPerfil = "pendente" | "aprovado" | "recusado" | "bloqueado";
 export type Visibilidade = "privada" | "academia";
 export type TipoAula = "youtube" | "link" | "upload";
 export type Nivel = "iniciante" | "intermedio" | "avancado";
+export type Plano = "semana" | "mes" | "ano" | "legacy";
 
 export type Perfil = {
   id: string;
@@ -13,6 +14,8 @@ export type Perfil = {
   avatar_url: string | null;
   papel: Papel;
   estado: EstadoPerfil;
+  plano: Plano;
+  acesso_expira_em: string | null;
   aprovado_por: string | null;
   aprovado_em: string | null;
   created_at: string;
@@ -153,12 +156,34 @@ export type PosicaoRanking = {
   posicao: number;
 };
 
+export type MembroPlano = { user_id: string; plano: Plano };
+
 export type PeriodoRanking = "semana" | "mes" | "geral";
 
 export const PAPEL_LABEL: Record<Papel, string> = {
   admin: "Administrador",
   equipa: "Equipa Insight",
   aluno: "Aluno",
+};
+
+export type InfoPlano = {
+  selo: string; // nome do selo
+  dias: number | null; // duração; null = permanente
+};
+
+/** semana→Bronze, mes→Prata, ano→Ouro, legacy→Diamante. */
+export const PLANO: Record<Plano, InfoPlano> = {
+  semana: { selo: "Bronze", dias: 7 },
+  mes: { selo: "Prata", dias: 30 },
+  ano: { selo: "Ouro", dias: 365 },
+  legacy: { selo: "Diamante", dias: null },
+};
+
+export const PLANO_LABEL: Record<Plano, string> = {
+  semana: "1 semana",
+  mes: "1 mês",
+  ano: "1 ano",
+  legacy: "Legacy (permanente)",
 };
 
 export const NIVEL_LABEL: Record<Nivel, string> = {

@@ -6,7 +6,14 @@ import type { PeriodoRanking } from "@/lib/types";
 import { PAPEL_LABEL } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../auth";
-import { Avatar, Badge, Carregando, EmptyState, PageHeader } from "../components/primitives";
+import {
+  Avatar,
+  Badge,
+  Carregando,
+  EmptyState,
+  PageHeader,
+  SeloPlano,
+} from "../components/primitives";
 import { useData } from "../use-data";
 
 const PERIODOS: { chave: PeriodoRanking; label: string }[] = [
@@ -25,9 +32,13 @@ export default function RankingPage() {
   const { sessao } = useAuth();
   const meuId = sessao?.user.id;
   const [periodo, setPeriodo] = useState<PeriodoRanking>("semana");
-  const { data, loading } = useData(() => Social.ranking(periodo), [periodo]);
+  const { data, loading } = useData(async () => {
+    const [lista, planos] = await Promise.all([Social.ranking(periodo), Social.planos()]);
+    return { lista, planos };
+  }, [periodo]);
 
-  const lista = data ?? [];
+  const lista = data?.lista ?? [];
+  const planos = data?.planos ?? {};
   const podio = lista.slice(0, 3);
   const restantes = lista.slice(3);
 
@@ -95,8 +106,9 @@ export default function RankingPage() {
                   {i === 0 ? <Crown className="size-6" /> : p.posicao}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="truncate font-semibold text-text-hi">{p.nome}</span>
+                    {planos[p.user_id] && <SeloPlano plano={planos[p.user_id]} />}
                     {p.papel !== "aluno" && (
                       <Badge className="bg-accent-soft px-1.5 py-0 text-[10px] text-accent">
                         {PAPEL_LABEL[p.papel]}
@@ -127,8 +139,9 @@ export default function RankingPage() {
                   </span>
                   <Avatar nome={p.nome || "?"} className="size-9 text-xs" />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="truncate text-sm font-semibold text-text-hi">{p.nome}</span>
+                      {planos[p.user_id] && <SeloPlano plano={planos[p.user_id]} />}
                       {p.papel !== "aluno" && (
                         <Badge className="bg-accent-soft px-1.5 py-0 text-[10px] text-accent">
                           {PAPEL_LABEL[p.papel]}

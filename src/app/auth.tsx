@@ -13,10 +13,23 @@ type AuthCtx = {
   carregando: boolean;
   eAdmin: boolean;
   eEquipa: boolean;
+  acessoExpirado: boolean;
   entrar: (email: string, palavraPasse: string) => Promise<string | null>;
   sair: () => Promise<void>;
   recarregarPerfil: () => Promise<void>;
 };
+
+/** O acesso de um aluno com plano temporário já passou da validade? */
+function expirou(perfil: Perfil | null): boolean {
+  return Boolean(
+    perfil &&
+    perfil.estado === "aprovado" &&
+    perfil.papel === "aluno" &&
+    perfil.plano !== "legacy" &&
+    perfil.acesso_expira_em &&
+    new Date(perfil.acesso_expira_em).getTime() < Date.now(),
+  );
+}
 
 const Ctx = createContext<AuthCtx | null>(null);
 
@@ -141,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     carregando,
     eAdmin: aprovado && perfil?.papel === "admin",
     eEquipa: aprovado && (perfil?.papel === "admin" || perfil?.papel === "equipa"),
+    acessoExpirado: expirou(perfil),
     entrar,
     sair,
     recarregarPerfil,
