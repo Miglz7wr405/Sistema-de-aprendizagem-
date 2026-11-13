@@ -381,6 +381,9 @@ const big = add(`<div class="bigplayer"><div id="bpInner" style="position:absolu
   <div id="bpTikSub" class="abs" style="left:0;right:0;bottom:78px;text-align:center;opacity:0"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Aprende a faturar em dólar com TikTok.</span></div>
   <div id="bpSub2" class="abs" style="left:0;right:0;bottom:78px;text-align:center;opacity:0"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Vais criar funis que vendem a 100%.</span></div>
   <div id="bpPulse" class="abs" style="inset:0;pointer-events:none"></div>
+  <canvas id="bpGrain" style="position:absolute;inset:0;width:100%;height:100%;opacity:.28;mix-blend-mode:overlay;pointer-events:none" width="72" height="40"></canvas>
+  <div id="bpScanlines" style="position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0 1px,transparent 1px 4px)"></div>
+  <div id="bpRec" style="position:absolute;right:24px;top:18px;display:flex;align-items:center;gap:8px;color:#fff;font-size:20px;font-weight:700;letter-spacing:.06em;text-shadow:0 1px 4px rgba(0,0,0,.8)"><i id="bpRecDot" style="display:block;width:14px;height:14px;border-radius:50%;background:#ff3b4e;box-shadow:0 0 10px #ff3b4e;flex:none"></i>REC</div>
   <div class="abs" style="left:24px;right:24px;bottom:22px;display:flex;align-items:center;gap:16px;color:#fff;font-size:20px">
     <span style="width:22px;height:22px">${I.play}</span><span id="bpTime">0:00 / 4:12</span>
     <div style="flex:1;height:6px;border-radius:9px;background:rgba(255,255,255,.3);overflow:hidden"><i id="bpBar" style="display:block;height:100%;width:0;background:#4668f4"></i></div>
@@ -701,7 +704,9 @@ function seek(t) {
       big.style.borderRadius = mix(18, 0, ex) + "px";
       const pt = Math.max(0, lt - 3.0);
       document.getElementById("bpInner").style.fontSize = (W * sh) + "px";
-      document.getElementById("bpCover").style.transform = `scale(${1.05 + pt * .03}) translate(${-pt * 6}px, 0)`;
+      const jx = (rng(Math.floor(t * 60 + 7))() - .5) * 3;
+      const jy = (rng(Math.floor(t * 60 + 11))() - .5) * 2;
+      document.getElementById("bpCover").style.transform = `scale(${1.05 + pt * .03}) translate(${-pt * 6 + jx}px, ${jy}px)`;
       const tikP = P(lt, 4.2, 5.0, "slow");
       document.getElementById("bpTikCover").style.opacity = tikP;
       st(document.getElementById("bpTitle"), { op: P(lt, 3.2, 3.9) * (1 - P(lt, 5.3, 5.8)) * (1 - tikP), tf: `translateY(${(1 - P(lt, 3.2, 4.2, "slow")) * 30}px) scale(${sh})` });
@@ -714,6 +719,10 @@ function seek(t) {
       const mm = Math.floor(secs / 60), ss = Math.floor(secs % 60);
       document.getElementById("bpTime").textContent = `${mm}:${String(ss).padStart(2,"0")} / 4:12`;
       document.getElementById("bpBar").style.width = (secs / 252 * 100) + "%";
+      // grain por frame (seed determinístico = aspeto vídeo real)
+      const gc=document.getElementById("bpGrain");if(gc){const ctx=gc.getContext("2d"),r=rng(Math.floor(t*60+3)),id2=ctx.createImageData(72,40),d=id2.data;for(let i=0;i<d.length;i+=4){const v=r()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=30;}ctx.putImageData(id2,0,0);}
+      // REC pisca a cada ~0.5s
+      const recEl=document.getElementById("bpRec");if(recEl)recEl.style.opacity=Math.sin(pt*3.14)>0?"1":"0.1";
     }
   }
   caption(6, t); caption(7, t);
