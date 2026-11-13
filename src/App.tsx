@@ -113,16 +113,10 @@ function Rotas() {
   );
 }
 
-/** Intro com falhas: completa na 1.ª visita da sessão; só a saudação logo após o login. */
+/** Intro com falhas sempre que se abre a app; só a saudação logo após o login. */
 function ComIntro({ children }: { children: ReactNode }) {
   const { sessao, perfil, carregando } = useAuth();
-  const [modo, setModo] = useState<"completa" | "saudacao" | null>(() => {
-    try {
-      return sessionStorage.getItem("intro-vista") ? null : "completa";
-    } catch {
-      return "completa";
-    }
-  });
+  const [modo, setModo] = useState<"completa" | "saudacao" | null>("completa");
   const tinhaSessao = useRef<boolean | null>(null);
 
   useEffect(() => {
@@ -132,14 +126,7 @@ function ComIntro({ children }: { children: ReactNode }) {
     tinhaSessao.current = tem;
   }, [sessao, carregando]);
 
-  const fim = () => {
-    try {
-      sessionStorage.setItem("intro-vista", "1");
-    } catch {
-      /* sem storage: a intro volta a aparecer, sem problema */
-    }
-    setModo(null);
-  };
+  const fim = () => setModo(null);
 
   return (
     <>

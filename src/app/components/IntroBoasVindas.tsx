@@ -157,10 +157,6 @@ export function IntroBoasVindas({
   const saltarRef = useRef(false);
 
   useEffect(() => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      fimRef.current();
-      return;
-    }
     const cv = canvasRef.current!;
     const g = cv.getContext("2d")!;
     const som = criarSom();
