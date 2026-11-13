@@ -215,7 +215,7 @@ const C = {
   criador: { t: "Criador Criativo", s: "Conteúdo", big: "CRIADOR\nCRIATIVO", a: "Criação de Conteúdo IA", n: 40, g: ["#02110f", "#0d9488", "#5eead4"] },
   gads:    { t: "Google Ads", s: "Tráfego Pago", big: "GOOGLE\nADS", a: "Tráfego Pago", n: 7, g: ["#03081a", "#2563eb", "#a5f3fc"] },
   vendas:  { t: "Processo de Vendas", s: "Vendas", big: "VENDAS", a: "Vendas", n: 6, g: ["#0b0f1a", "#4f46e5", "#c7d2fe"] },
-  nichos:  { t: "Nichos que Faturam", s: "Ofertas & Nichos", big: "NICHOS", a: "Marketing Digital", n: 74, g: ["#06120a", "#16a34a", "#bef264"] },
+  atendimento: { t: "Atendimento ao Cliente", s: "Clientes", big: "ATENDIMENTO\nCLIENTE", a: "Clientes", n: 9, g: ["#02080f", "#0369a1", "#7dd3fc"] },
 };
 const IMG_COVERS = {
   finch: 'out/covers/finch.jpg', caio: 'out/covers/caio.jpg',
@@ -223,6 +223,10 @@ const IMG_COVERS = {
   enrico: 'out/covers/enrico.png', cripto: 'out/covers/cripto.jpg',
   claude: 'out/covers/claude.jpg', lovable: 'out/covers/lovable.jpg',
   andro: 'out/covers/andro.jpg',
+  tiktok: 'out/covers/sec-tiktok.jpg',
+  film: 'out/covers/sec-vibe.jpg', criador: 'out/covers/sec-vibe.jpg',
+  gads: 'out/covers/sec-trafego.jpg', vendas: 'out/covers/sec-vendas.jpg',
+  atendimento: 'out/covers/sec-clientes.jpg',
   'sec-vibe': 'out/covers/sec-vibe.jpg', 'sec-marketing': 'out/covers/sec-marketing.jpg',
   'sec-cripto': 'out/covers/sec-cripto.jpg', 'sec-tiktok': 'out/covers/sec-tiktok.jpg',
   'sec-trafego': 'out/covers/sec-trafego.jpg', 'sec-vendas': 'out/covers/sec-vendas.jpg',
@@ -284,7 +288,8 @@ const status = `<div class="status"><span>9:41</span><span style="display:flex;g
   <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2" width="3" height="10" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>
   <svg width="26" height="13" viewBox="0 0 26 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".5"/><rect x="2" y="2" width="17" height="9" rx="2" fill="currentColor"/><rect x="23.5" y="4" width="2" height="5" rx="1" fill="currentColor" opacity=".5"/></svg></span></div>`;
 const AREAS = [["💻", "Vibe Coder & Programação", "finch", 2, 159, "sec-vibe"], ["📣", "Marketing Digital", "finch", 5, 251, "sec-marketing"], ["🪙", "Criptomoedas e Investimentos", "cripto", 1, 113, "sec-cripto"],
-  ["🎵", "TikTok Shop", "tiktok", 1, 43, "sec-tiktok"], ["🎬", "Criação de Conteúdo IA", "film", 2, 110, "film"], ["📈", "Tráfego Pago", "andro", 2, 56, "sec-trafego"]];
+  ["🎵", "TikTok Shop", "tiktok", 1, 43, "sec-tiktok"], ["🎬", "Criação de Conteúdo IA", "film", 2, 110, "film"], ["📈", "Tráfego Pago", "andro", 2, 56, "sec-trafego"],
+  ["💼", "Vendas", "vendas", 1, 6, "sec-vendas"], ["🤝", "Clientes", "atendimento", 1, 9, "sec-clientes"]];
 const scrHome = add(`<div class="scr">${status}
   <div class="hdr"><span class="ic">${I.menu}</span><span style="flex:1">Início</span><span class="ic">${I.bell}</span><span class="av">IA</span></div>
   <div class="body" id="homeBody">
@@ -374,6 +379,8 @@ const big = add(`<div class="bigplayer"><div id="bpInner" style="position:absolu
      <div class="disp" style="font-size:58px;font-weight:700;letter-spacing:-.02em;margin-top:6px">TikTok Shop<br/>na Prática</div></div>
   <div id="bpSub" class="abs" style="left:0;right:0;bottom:78px;text-align:center"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Bem-vindo… esta é mais uma aula.</span></div>
   <div id="bpTikSub" class="abs" style="left:0;right:0;bottom:78px;text-align:center;opacity:0"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Aprende a faturar em dólar com TikTok.</span></div>
+  <div id="bpSub2" class="abs" style="left:0;right:0;bottom:78px;text-align:center;opacity:0"><span style="background:rgba(0,0,0,.72);color:#fff;font-size:30px;font-weight:500;padding:8px 18px;border-radius:8px">Vais criar funis que vendem a 100%.</span></div>
+  <div id="bpPulse" class="abs" style="inset:0;pointer-events:none"></div>
   <div class="abs" style="left:24px;right:24px;bottom:22px;display:flex;align-items:center;gap:16px;color:#fff;font-size:20px">
     <span style="width:22px;height:22px">${I.play}</span><span id="bpTime">0:00 / 4:12</span>
     <div style="flex:1;height:6px;border-radius:9px;background:rgba(255,255,255,.3);overflow:hidden"><i id="bpBar" style="display:block;height:100%;width:0;background:#4668f4"></i></div>
@@ -384,7 +391,7 @@ const finger = add(`<div class="finger"></div>`);
 const ripple = add(`<div class="ripple"></div>`);
 
 /* Carrossel de áreas */
-const CAR = [["cripto", "Criptomoedas"], ["tiktok", "TikTok Shop"], ["enrico", "Marketing Digital"], ["claude", "Vibe Coding"], ["andro", "Tráfego Pago"], ["film", "Conteúdo com IA"], ["nichos", "Nichos"]];
+const CAR = [["cripto", "Criptomoedas"], ["tiktok", "TikTok Shop"], ["enrico", "Marketing Digital"], ["claude", "Vibe Coding"], ["andro", "Tráfego Pago"], ["film", "Conteúdo com IA"], ["lovable", "Vibe Coder"]];
 const ring = add(`<div class="ring"></div>`);
 const ccards = CAR.map(([key, area]) => add(`<div class="ccard"><div class="cv">${cover(key)}</div><div class="info">
   <div class="area">${C[key].a}</div><div class="tit">${C[key].t}</div><div class="meta">${C[key].n} aulas · ${C[key].s}</div></div></div>`, ring));
@@ -698,12 +705,15 @@ function seek(t) {
       const tikP = P(lt, 4.2, 5.0, "slow");
       document.getElementById("bpTikCover").style.opacity = tikP;
       st(document.getElementById("bpTitle"), { op: P(lt, 3.2, 3.9) * (1 - P(lt, 5.3, 5.8)) * (1 - tikP), tf: `translateY(${(1 - P(lt, 3.2, 4.2, "slow")) * 30}px) scale(${sh})` });
-      st(document.getElementById("bpSub"), { op: P(lt, 3.9, 4.3) * (1 - tikP) });
+      st(document.getElementById("bpSub"), { op: P(lt, 3.9, 4.3) * (1 - P(lt, 4.6, 4.9)) * (1 - tikP) });
+      st(document.getElementById("bpSub2"), { op: P(lt, 4.6, 4.9) * (1 - P(lt, 5.2, 5.5)) * (1 - tikP) });
       st(document.getElementById("bpTikTitle"), { op: tikP * (1 - P(lt, 5.5, 6.1)), tf: `translateY(${(1 - tikP) * 25}px)` });
       st(document.getElementById("bpTikSub"), { op: tikP * (1 - P(lt, 5.5, 6.1)) });
-      const secs = Math.min(pt, 4.5);
-      document.getElementById("bpTime").textContent = `0:0${Math.floor(secs)} / 4:12`;
-      document.getElementById("bpBar").style.width = (secs / 252 * 100 * 6) + "%";
+      document.getElementById("bpPulse").style.background = `rgba(255,255,255,${(.018 + .014 * Math.sin(pt * 5.8)).toFixed(4)})`;
+      const secs = Math.min(pt * 1.6, 8);
+      const mm = Math.floor(secs / 60), ss = Math.floor(secs % 60);
+      document.getElementById("bpTime").textContent = `${mm}:${String(ss).padStart(2,"0")} / 4:12`;
+      document.getElementById("bpBar").style.width = (secs / 252 * 100) + "%";
     }
   }
   caption(6, t); caption(7, t);
@@ -811,7 +821,10 @@ function seek(t) {
 
 window.seek = seek;
 window.DURACAO = DURACAO; window.FPS = FPS;
-window.ready = document.fonts.ready.then(() => { seek(0); return true; });
+window.ready = document.fonts.ready.then(() => {
+  const imgs = [...document.querySelectorAll('img')];
+  return Promise.all(imgs.filter(i => !i.complete).map(i => new Promise(r => { i.onload = i.onerror = r; })));
+}).then(() => { seek(0); return true; });
 </script>
 </body>
 </html>
