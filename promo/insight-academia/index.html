@@ -142,7 +142,7 @@ canvas { position: absolute; inset: 0; }
 <script>
 /* ═══════════════════ CONSTANTES EDITÁVEIS ═══════════════════ */
 const FPS = 60;
-const DURACAO = 56;
+const DURACAO = 61;
 const NUM_PT = "+351 933 652 888";
 const NUM_MZ = "+258 86 727 2348";
 const TOTAL_AULAS = 767;
@@ -150,7 +150,7 @@ const TOTAL_CURSOS = 16;
 
 /* Tempos das cenas (segundos) — alinhados com a locução. */
 const T = window.TIMING || {
-  hook: 0, logo: 5.2, home: 8.6, sec: 14.5, play: 19.5, car: 27.0, num: 37.5, vs: 43.5, cta: 47.5,
+  hook: 0, logo: 5.2, home: 8.6, sec: 14.5, play: 19.5, car: 27.0, num: 42.5, vs: 48.5, cta: 52.5,
 };
 
 /* ═══════════════════ EASING ═══════════════════ */
@@ -454,19 +454,19 @@ const ctaTag = add(`<div class="abs disp" style="left:0;right:0;top:760px;text-a
 /* ═══════════════════ LEGENDAS (sincronizadas com a voz) ═══════════════════ */
 const CAPS = window.CAPS || [
   // [início, fim, texto, y, tamanho]  — *palavra* = destaque azul, !palavra! = vermelho, _palavra_ = verde
-  [0.35, 1.5, "Pára um segundo.", 880, 110],
-  [1.5, 5.0, "Quanto já gastaste em cursos… que !nunca! acabaste?", 1360, 84],
-  [5.5, 8.4, "Isto é a *Insight* *Academia.*", 1470, 76],
+  [0.35, 1.3, "Pára um segundo!", 880, 110],
+  [1.3, 5.0, "Quanto já gastaste em cursos… que !nunca! acabaste?", 1360, 84],
+  [5.5, 8.4, "Isto é a *Insight* *Academia!*", 1470, 76],
   [8.8, 10.1, "Uma só plataforma…", 150, 84],
   [10.1, 14.3, "com os cursos dos *maiores* *nomes* do digital.", 140, 72],
-  [14.6, 19.3, "Vários influencers. *Um* *só* *lugar.*", 150, 72],
-  [20.4, 21.5, "Carregas no *play*…", 150, 92],
-  [21.5, 26.4, "e estás *dentro.*", 150, 92],
-  [37.6, 39.5, "Mais de", 330, 64],
-  [39.5, 43.3, "organizadas por módulos, com *progresso*, *ranking* e *comunidade.*", 1735, 54],
-  [43.6, 45.7, "Enquanto uns pagam milhares por !um! !só! curso…", 140, 66],
-  [45.7, 47.4, "tu tens *todos.*", 860, 108],
-  [47.7, 50.4, "Queres entrar?", 330, 110],
+  [14.6, 19.3, "As maiores *lendas* do digital… *num* *só* *lugar!*", 150, 72],
+  [20.4, 21.4, "Carregas no *play*…", 150, 92],
+  [21.4, 26.4, "e estás *dentro.*", 150, 92],
+  [42.6, 44.5, "Mais de", 330, 64],
+  [44.5, 48.3, "organizadas por módulos, com *progresso*, *ranking* e *comunidade.*", 1735, 54],
+  [48.6, 50.85, "Enquanto uns pagam milhares por !um! !só! curso…", 140, 66],
+  [50.85, 52.4, "tu tens *todos!*", 860, 108],
+  [52.7, 55.4, "Queres entrar?", 330, 110],
 ];
 const capEls = CAPS.map(([, , txt, y, sz]) => {
   const words = txt.split(" ").map(w => {
@@ -723,7 +723,7 @@ function seek(t) {
   caption(6, t); caption(7, t);
 
   /* ── 6. CARROSSEL DE ÁREAS (gira em câmara lenta) ── */
-  const STEP = 2.0, F0T = T.car + .6;
+  const STEP = 3.0, F0T = T.car + .6;
   if (t >= T.car - .4 && t < T.num + .5) {
     const lt = t - T.car;
     const enter = P(t, T.car - .3, T.car + 1.0, "slow"), out = P(t, T.num - .3, T.num + .4, "in");

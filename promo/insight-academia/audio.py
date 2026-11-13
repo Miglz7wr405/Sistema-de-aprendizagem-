@@ -5,8 +5,8 @@ import json, sys, os, wave
 import numpy as np
 
 SR = 48000
-DUR = 56.0
-T = dict(hook=0, logo=5.2, home=8.6, sec=14.5, play=19.5, car=27.0, num=37.5, vs=43.5, cta=47.5)
+DUR = 61.0
+T = dict(hook=0, logo=5.2, home=8.6, sec=14.5, play=19.5, car=27.0, num=42.5, vs=48.5, cta=52.5)
 if len(sys.argv) > 1 and os.path.exists(sys.argv[1]):
     T.update(json.load(open(sys.argv[1]))["TIMING"])
 N = int(SR * DUR)
@@ -163,8 +163,8 @@ put(whoosh(1.3, lo=300, hi=8000), T["car"] - 1.2, .4)
 # ── CARROSSEL ──
 F0 = T["car"] + .6
 for i in range(1, 5):
-    put(whoosh(.7, lo=800, hi=9000), F0 + i * 2.0 - .55, .22, pan=.5 - (i % 2))
-    put(tick(1800 + i * 90, .08), F0 + i * 2.0 - .05, .3)
+    put(whoosh(.7, lo=800, hi=9000), F0 + i * 3.0 - .55, .22, pan=.5 - (i % 2))
+    put(tick(1800 + i * 90, .08), F0 + i * 3.0 - .05, .3)
 
 # ── NÚMEROS ──
 put(riser(1.2, 300, 2400), T["num"] + .3, .35)
