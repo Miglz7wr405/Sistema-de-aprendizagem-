@@ -145,8 +145,8 @@ const FPS = 60;
 const DURACAO = 56;
 const NUM_PT = "+351 933 652 888";
 const NUM_MZ = "+258 86 727 2348";
-const TOTAL_AULAS = 747;   // 677 nos cursos publicados + 70 do novo curso
-const TOTAL_CURSOS = 15;
+const TOTAL_AULAS = 767;
+const TOTAL_CURSOS = 16;
 
 /* Tempos das cenas (segundos) — alinhados com a locução. */
 const T = window.TIMING || {
@@ -450,18 +450,18 @@ const ctaTag = add(`<div class="abs disp" style="left:0;right:0;top:760px;text-a
 /* ═══════════════════ LEGENDAS (sincronizadas com a voz) ═══════════════════ */
 const CAPS = window.CAPS || [
   // [início, fim, texto, y, tamanho]  — *palavra* = destaque azul, !palavra! = vermelho, _palavra_ = verde
-  [0.35, 2.0, "Pára um segundo.", 880, 110],
-  [2.1, 5.0, "Quanto já gastaste em cursos… que !nunca! acabaste?", 1360, 84],
-  [5.5, 8.5, "Isto é a *Insight* *Academia.*", 1470, 76],
-  [8.8, 11.6, "Uma só plataforma…", 150, 84],
-  [11.6, 14.4, "com os cursos dos *maiores* *nomes* do digital.", 140, 72],
+  [0.35, 1.5, "Pára um segundo.", 880, 110],
+  [1.5, 5.0, "Quanto já gastaste em cursos… que !nunca! acabaste?", 1360, 84],
+  [5.5, 8.4, "Isto é a *Insight* *Academia.*", 1470, 76],
+  [8.8, 10.1, "Uma só plataforma…", 150, 84],
+  [10.1, 14.3, "com os cursos dos *maiores* *nomes* do digital.", 140, 72],
   [14.6, 19.3, "Vários influencers. *Um* *só* *lugar.*", 150, 72],
-  [19.6, 22.4, "Carregas no *play*…", 150, 92],
-  [22.5, 26.4, "e estás *dentro.*", 150, 92],
-  [37.6, 39.2, "Mais de", 330, 64],
-  [39.3, 43.3, "organizadas por módulos, com *progresso*, *ranking* e *comunidade.*", 1735, 54],
-  [43.6, 45.6, "Enquanto uns pagam milhares por !um! !só! curso…", 140, 66],
-  [45.6, 47.4, "tu tens *todos.*", 860, 108],
+  [20.4, 21.5, "Carregas no *play*…", 150, 92],
+  [21.5, 26.4, "e estás *dentro.*", 150, 92],
+  [37.6, 39.5, "Mais de", 330, 64],
+  [39.5, 43.3, "organizadas por módulos, com *progresso*, *ranking* e *comunidade.*", 1735, 54],
+  [43.6, 45.7, "Enquanto uns pagam milhares por !um! !só! curso…", 140, 66],
+  [45.7, 47.4, "tu tens *todos.*", 860, 108],
   [47.7, 50.4, "Queres entrar?", 330, 110],
 ];
 const capEls = CAPS.map(([, , txt, y, sz]) => {
