@@ -138,7 +138,7 @@ body {
   color: #3a2a00;
   white-space: nowrap;
 }
-.selo::after {
+.selo-brilha::after {
   content: "";
   position: absolute;
   top: 0;

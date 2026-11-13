@@ -13,13 +13,21 @@ const SELO_CLASSE: Record<Plano, string> = {
   legacy: "selo-diamante",
 };
 
-/** Selo do plano de acesso, a brilhar (Bronze/Prata/Ouro/Diamante). */
-export function SeloPlano({ plano, className }: { plano?: Plano | null; className?: string }) {
+/** Selo do plano de acesso (Bronze/Prata/Ouro/Diamante); `brilho` anima-o (só no topo da app). */
+export function SeloPlano({
+  plano,
+  className,
+  brilho = false,
+}: {
+  plano?: Plano | null;
+  className?: string;
+  brilho?: boolean;
+}) {
   if (!plano || !(plano in SELO_CLASSE)) return null;
   const Icone = plano === "legacy" ? Gem : Medal;
   return (
     <span
-      className={cn("selo", SELO_CLASSE[plano], className)}
+      className={cn("selo", SELO_CLASSE[plano], brilho && "selo-brilha", className)}
       title={`Plano ${PLANO[plano].selo}`}
     >
       <Icone className="size-3" />
@@ -46,7 +54,7 @@ export function AcessoChip({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)} title={`Acesso ${PLANO[perfil.plano]?.selo ?? ""}`}>
-      <SeloPlano plano={perfil.plano} />
+      <SeloPlano plano={perfil.plano} brilho />
       <span className="whitespace-nowrap text-xs font-medium text-text-mid">{textoAcesso(perfil)}</span>
     </span>
   );

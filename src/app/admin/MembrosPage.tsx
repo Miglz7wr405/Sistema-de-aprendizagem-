@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Ban, Copy, KeyRound, MessageCircle, Search, ShieldCheck, Users } from "lucide-react";
+import { Ban, Copy, KeyRound, MessageCircle, Search, ShieldCheck, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { Perfis } from "@/lib/db";
@@ -31,7 +31,7 @@ function validadeAcesso(p: Perfil): { texto: string; expirado: boolean } {
   return { texto: `Expira em ${dias} dia${dias === 1 ? "" : "s"}`, expirado: false };
 }
 import { useData } from "../use-data";
-import { gerarPalavraPasse, linkWhatsApp, reporPalavraPasse } from "./acoes";
+import { apagarConta, gerarPalavraPasse, linkWhatsApp, reporPalavraPasse } from "./acoes";
 
 const PAPEL_COR: Record<Papel, string> = {
   admin: "bg-violet-50 text-violet-700",
@@ -94,6 +94,17 @@ export default function MembrosPage() {
     );
   }
 
+  async function eliminar(p: Perfil) {
+    if (!confirm(`Eliminar ${p.nome_completo} de vez? A conta, o progresso e as mensagens são apagados e não dá para desfazer.`)) return;
+    try {
+      await apagarConta(p.id);
+      toast.success(`${p.nome_completo} foi eliminado`);
+      await refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    }
+  }
+
   async function confirmarRepor() {
     if (!repor || novaSenha.length < 6) return;
     setARepor(true);
@@ -146,7 +157,7 @@ export default function MembrosPage() {
                   : "border-hairline bg-bg-elevated text-text-mid hover:border-accent",
               )}
             >
-              {f === "todos" ? "Todos" : f === "bloqueado" ? "Bloqueados" : PAPEL_LABEL[f]} (
+              {f === "todos" ? "Todos" : f === "bloqueado" ? "Sem acesso" : PAPEL_LABEL[f]} (
               {contagem(f)})
             </button>
           ))}
@@ -183,7 +194,7 @@ export default function MembrosPage() {
                     })()}
                 </div>
                 {p.estado === "bloqueado" ? (
-                  <Badge className="bg-red-50 text-red-600">Bloqueado</Badge>
+                  <Badge className="bg-red-50 text-red-600">Sem acesso</Badge>
                 ) : (
                   <Badge className={PAPEL_COR[p.papel]}>{PAPEL_LABEL[p.papel]}</Badge>
                 )}
@@ -242,22 +253,32 @@ export default function MembrosPage() {
                       <Button
                         variant="outline"
                         className="h-9 px-2.5 text-xs"
-                        onClick={() => mudar(p, { estado: "aprovado" }, "Acesso reativado")}
+                        onClick={() => mudar(p, { estado: "aprovado" }, "Acesso devolvido")}
                       >
-                        <ShieldCheck className="size-4" /> Reativar
+                        <ShieldCheck className="size-4" /> Dar acesso
                       </Button>
                     ) : (
                       <Button
                         variant="danger"
                         className="h-9 px-2.5 text-xs"
                         onClick={() =>
-                          confirm(`Bloquear o acesso de ${p.nome_completo}?`) &&
-                          mudar(p, { estado: "bloqueado" }, "Acesso bloqueado")
+                          confirm(`Tirar o acesso de ${p.nome_completo}? A conta fica guardada e podes devolver o acesso depois.`) &&
+                          mudar(p, { estado: "bloqueado" }, "Acesso retirado")
                         }
                       >
-                        <Ban className="size-4" /> Bloquear
+                        <Ban className="size-4" /> Tirar acesso
                       </Button>
                     ))}
+                  {!souEu && (
+                    <Button
+                      variant="ghost"
+                      className="h-9 px-2.5 text-red-600 hover:bg-red-50"
+                      title="Eliminar membro"
+                      onClick={() => eliminar(p)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             );

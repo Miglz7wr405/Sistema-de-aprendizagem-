@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Crown, Trophy } from "lucide-react";
 
 import { Social } from "@/lib/db";
-import type { PeriodoRanking } from "@/lib/types";
+import type { PeriodoRanking, PosicaoRanking } from "@/lib/types";
 import { PAPEL_LABEL } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, primeiroNome } from "@/lib/utils";
 import { useAuth } from "../auth";
 import {
   Avatar,
@@ -22,11 +22,56 @@ const PERIODOS: { chave: PeriodoRanking; label: string }[] = [
   { chave: "geral", label: "Geral" },
 ];
 
-const CORES_PODIO = [
-  "from-amber-300 to-amber-500 text-amber-950", // 1.º ouro
-  "from-slate-200 to-slate-400 text-slate-800", // 2.º prata
-  "from-orange-300 to-orange-500 text-orange-950", // 3.º bronze
-];
+const TROFEU = ["text-amber-400", "text-slate-400", "text-orange-500"]; // ouro, prata, bronze
+const ALTURA_BLOCO = ["h-36", "h-24", "h-16"]; // 1.º mais alto
+
+function Podio({ top, meuId }: { top: PosicaoRanking[]; meuId?: string }) {
+  // ordem visual: 2.º à esquerda, 1.º ao centro, 3.º à direita
+  const lugares = [1, 0, 2].filter((i) => top[i]);
+  return (
+    <div className="app-card overflow-hidden p-5">
+      <p className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-text-low">
+        Pódio
+      </p>
+      <div className="flex items-end justify-center gap-2">
+        {lugares.map((i) => {
+          const p = top[i];
+          return (
+            <div key={p.user_id} className="flex w-1/3 max-w-[140px] flex-col items-center">
+              {i === 0 && <Crown className="mb-1 size-6 text-amber-400" />}
+              <Trophy className={cn("mb-1.5", i === 0 ? "size-8" : "size-6", TROFEU[i])} />
+              <Avatar
+                nome={p.nome || "?"}
+                tom={i === 0 ? "solid" : "soft"}
+                className={cn(
+                  i === 0 ? "size-14 text-base" : "size-11",
+                  p.user_id === meuId && "ring-2 ring-accent ring-offset-2",
+                )}
+              />
+              <p className="mt-1.5 w-full truncate text-center text-sm font-semibold text-text-hi">
+                {primeiroNome(p.nome)}
+              </p>
+              <p className="mb-2 text-center text-[11px] text-text-low">
+                {p.concluidas} concluída{p.concluidas === 1 ? "" : "s"}
+              </p>
+              <div
+                className={cn(
+                  "grid w-full place-items-center rounded-t-xl border border-b-0 border-hairline bg-gradient-to-b from-white to-accent-soft shadow-[0_-6px_20px_-12px_rgba(0,51,255,.35)]",
+                  ALTURA_BLOCO[i],
+                )}
+              >
+                <span className={cn("font-display font-bold text-accent", i === 0 ? "text-5xl" : "text-4xl")}>
+                  {i + 1}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="h-2 rounded-b-lg bg-accent/15" />
+    </div>
+  );
+}
 
 export default function RankingPage() {
   const { sessao } = useAuth();
@@ -39,14 +84,12 @@ export default function RankingPage() {
 
   const lista = data?.lista ?? [];
   const planos = data?.planos ?? {};
-  const podio = lista.slice(0, 3);
-  const restantes = lista.slice(3);
 
   return (
     <div className="page-fade-in">
       <PageHeader
         title="Ranking"
-        subtitle="Quem assistiu a mais vídeos na academia. Os 3 primeiros do mês ganham um prémio!"
+        subtitle="Quem concluiu mais aulas na academia. Os 3 primeiros do mês ganham um prémio!"
       />
 
       <div className="mb-5 inline-flex rounded-xl border border-hairline bg-bg-elevated p-1">
@@ -68,8 +111,8 @@ export default function RankingPage() {
         <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <Trophy className="size-5 shrink-0" />
           <p>
-            <strong>Prémio mensal:</strong> os 3 primeiros deste mês ganham um prémio. Continua a
-            estudar para subires no ranking!
+            <strong>Prémio mensal:</strong> os 3 primeiros deste mês ganham um prémio. Conclui aulas
+            para subires no ranking!
           </p>
         </div>
       )}
@@ -80,34 +123,39 @@ export default function RankingPage() {
         <EmptyState
           icon={Trophy}
           title="Ainda sem atividade"
-          description="Assim que as pessoas começarem a ver aulas, aparecem aqui por ordem."
+          description="Assim que as pessoas começarem a concluir aulas, aparecem aqui por ordem."
         />
       ) : (
-        <>
-          {/* Pódio top 3 */}
-          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {podio.map((p, i) => (
+        <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+          {/* Pódio: à direita no computador, em cima no telemóvel */}
+          <div className="lg:order-2">
+            <div className="lg:sticky lg:top-24">
+              <Podio top={lista.slice(0, 3)} meuId={meuId} />
+            </div>
+          </div>
+
+          {/* Lista completa */}
+          <div className="app-card divide-y divide-hairline lg:order-1">
+            {lista.map((p) => (
               <div
                 key={p.user_id}
                 className={cn(
-                  "app-card flex items-center gap-3 overflow-hidden p-4",
-                  p.user_id === meuId && "ring-2 ring-accent",
-                  i === 0 && "sm:order-2",
-                  i === 1 && "sm:order-1",
-                  i === 2 && "sm:order-3",
+                  "flex items-center gap-3 px-4 py-3",
+                  p.user_id === meuId && "bg-accent-soft",
                 )}
               >
-                <div
+                <span
                   className={cn(
-                    "grid size-12 shrink-0 place-items-center rounded-full bg-gradient-to-br font-display text-lg font-bold",
-                    CORES_PODIO[i],
+                    "w-7 shrink-0 text-center font-display text-sm font-bold",
+                    p.posicao <= 3 ? TROFEU[p.posicao - 1] : "text-text-low",
                   )}
                 >
-                  {i === 0 ? <Crown className="size-6" /> : p.posicao}
-                </div>
+                  {p.posicao}
+                </span>
+                <Avatar nome={p.nome || "?"} className="size-9 text-xs" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="truncate font-semibold text-text-hi">{p.nome}</span>
+                    <span className="truncate text-sm font-semibold text-text-hi">{p.nome}</span>
                     {planos[p.user_id] && <SeloPlano plano={planos[p.user_id]} />}
                     {p.papel !== "aluno" && (
                       <Badge className="bg-accent-soft px-1.5 py-0 text-[10px] text-accent">
@@ -115,50 +163,20 @@ export default function RankingPage() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-text-low">
-                    {p.total} {p.total === 1 ? "vídeo" : "vídeos"} · {p.concluidas} concluídos
+                  <p className="text-xs text-text-low">
+                    {p.total} {p.total === 1 ? "vídeo visto" : "vídeos vistos"}
                   </p>
                 </div>
+                <span className="shrink-0 text-right">
+                  <span className="font-display text-lg font-bold text-text-hi">{p.concluidas}</span>
+                  <span className="block text-[11px] text-text-low">
+                    concluída{p.concluidas === 1 ? "" : "s"}
+                  </span>
+                </span>
               </div>
             ))}
           </div>
-
-          {/* Lista restante */}
-          {restantes.length > 0 && (
-            <div className="app-card divide-y divide-hairline">
-              {restantes.map((p) => (
-                <div
-                  key={p.user_id}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3",
-                    p.user_id === meuId && "bg-accent-soft",
-                  )}
-                >
-                  <span className="w-7 shrink-0 text-center font-display text-sm font-bold text-text-low">
-                    {p.posicao}
-                  </span>
-                  <Avatar nome={p.nome || "?"} className="size-9 text-xs" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="truncate text-sm font-semibold text-text-hi">{p.nome}</span>
-                      {planos[p.user_id] && <SeloPlano plano={planos[p.user_id]} />}
-                      {p.papel !== "aluno" && (
-                        <Badge className="bg-accent-soft px-1.5 py-0 text-[10px] text-accent">
-                          {PAPEL_LABEL[p.papel]}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-text-low">{p.concluidas} concluídos</p>
-                  </div>
-                  <span className="shrink-0 text-right">
-                    <span className="font-display text-lg font-bold text-text-hi">{p.total}</span>
-                    <span className="block text-[11px] text-text-low">vídeos</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
