@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import { BookOpen, GraduationCap, Trophy } from "lucide-react";
+import { BookOpen, GraduationCap, Play, Trophy } from "lucide-react";
 
 import { primeiroNome } from "@/lib/utils";
+import { PLANO } from "@/lib/types";
 import { useAuth } from "../auth";
 import { progressoDoCurso, SeccaoCard } from "../components/Catalogo";
-import { Button, Carregando, EmptyState, Erro, ProgressBar } from "../components/primitives";
+import { Button, Carregando, EmptyState, Erro, ProgressBar, SeloPlano } from "../components/primitives";
 import { useCatalogo } from "../use-catalogo";
 
 export default function InicioPage() {
@@ -14,7 +15,6 @@ export default function InicioPage() {
   if (loading) return <Carregando />;
   if (error || !cat) return <Erro mensagem={error ?? "Erro"} onRetry={refetch} />;
 
-  // O início mostra só as áreas (secções); os cursos aparecem ao abrir uma área.
   const seccoes = cat.seccoes
     .map((s) => ({ seccao: s, cursos: cat.cursos.filter((c) => c.seccao_id === s.id) }))
     .filter((x) => x.cursos.length > 0);
@@ -28,10 +28,41 @@ export default function InicioPage() {
     return p.total > 0 && p.concluidas === p.total;
   }).length;
 
+  // Cursos com progresso, ordenados por vista_em mais recente
+  const aulaIdParaCursoId = new Map(cat.aulas.map((a) => [a.id, a.curso_id]));
+  const cursoPorId = new Map(cat.cursos.map((c) => [c.id, c]));
+  const ultimaVistaPorCurso = new Map<string, string>();
+  for (const p of cat.progresso) {
+    const cursoId = aulaIdParaCursoId.get(p.aula_id);
+    if (!cursoId) continue;
+    const atual = ultimaVistaPorCurso.get(cursoId);
+    if (!atual || p.vista_em > atual) ultimaVistaPorCurso.set(cursoId, p.vista_em);
+  }
+  const continuar = Array.from(ultimaVistaPorCurso.entries())
+    .sort((a, b) => b[1].localeCompare(a[1]))
+    .slice(0, 4)
+    .map(([cursoId]) => cursoPorId.get(cursoId))
+    .filter((c): c is NonNullable<typeof c> => c != null);
+
+  const expiraEm = perfil?.acesso_expira_em
+    ? new Date(perfil.acesso_expira_em).toLocaleDateString("pt-PT")
+    : null;
+
   return (
     <div className="page-fade-in space-y-8">
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent via-accent-2 to-accent-3 p-6 text-white md:p-8">
         <div className="relative z-10 max-w-xl">
+          {/* Patente / plano de acesso */}
+          {perfil?.plano && (
+            <div className="mb-3 flex items-center gap-2">
+              <SeloPlano plano={perfil.plano} className="text-sm px-3 py-1" />
+              <span className="text-xs text-white/70">
+                Acesso {PLANO[perfil.plano].selo}
+                {expiraEm && <> · expira {expiraEm}</>}
+              </span>
+            </div>
+          )}
+
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
             Insight Academia
           </p>
@@ -64,6 +95,50 @@ export default function InicioPage() {
         </div>
         <GraduationCap className="absolute -bottom-6 -right-6 size-44 text-white/10" />
       </section>
+
+      {continuar.length > 0 && (
+        <section>
+          <h2 className="mb-3 font-display text-lg font-bold text-text-hi">Continuar a ver</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {continuar.map((curso) => {
+              const prog = progressoDoCurso(cat, curso.id);
+              return (
+                <Link
+                  key={curso.id}
+                  to={`/curso/${curso.id}`}
+                  className="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface transition hover:shadow-md"
+                >
+                  {curso.capa_url ? (
+                    <div className="aspect-video overflow-hidden">
+                      <img
+                        src={curso.capa_url}
+                        alt={curso.titulo}
+                        className="h-full w-full object-cover transition group-hover:scale-105"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex aspect-video items-center justify-center bg-accent/10">
+                      <Play className="size-8 text-accent" />
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-col p-3">
+                    <p className="line-clamp-2 text-xs font-medium text-text-hi sm:text-sm">
+                      {curso.titulo}
+                    </p>
+                    <div className="mt-auto pt-2">
+                      <div className="mb-1 flex justify-between text-xs text-text-mid">
+                        <span>{prog.concluidas}/{prog.total} aulas</span>
+                        <span>{prog.pct}%</span>
+                      </div>
+                      <ProgressBar value={prog.pct} className="h-1" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {seccoes.length === 0 ? (
         <EmptyState
