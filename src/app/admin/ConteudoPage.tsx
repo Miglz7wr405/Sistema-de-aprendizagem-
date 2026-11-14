@@ -36,6 +36,7 @@ import { BotaoDrive, BotaoImportarPasta } from "../components/DrivePicker";
 import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
 import { BotaoImportarVimeo, type VideoVimeo } from "../components/VimeoImporter";
 import { BotaoCorrigirPrivacidadeVimeo } from "../components/CorrigirPrivacidadeVimeo";
+import { BotaoImportarCursoDrive } from "../components/ImportarCursoDrive";
 import { BotaoOrganizarAulas } from "../components/OrganizarAulas";
 import { BotaoGerarTextos, gerarUmaAula } from "../components/GerarTextos";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
@@ -763,9 +764,18 @@ export default function ConteudoPage() {
           titulo={seccao ? `Cursos · ${seccao.titulo}` : "Cursos"}
           acao={
             seccao && (
-              <Button className="h-8 px-3" onClick={() => abrirCurso("novo")}>
-                <Plus className="size-4" /> Novo
-              </Button>
+              <div className="flex gap-1.5">
+                <BotaoImportarCursoDrive
+                  seccaoId={seccao.id}
+                  onCriado={async (id) => {
+                    await refetch();
+                    escolher(seccao.id, id);
+                  }}
+                />
+                <Button className="h-8 px-3" onClick={() => abrirCurso("novo")}>
+                  <Plus className="size-4" /> Novo
+                </Button>
+              </div>
             )
           }
         >
