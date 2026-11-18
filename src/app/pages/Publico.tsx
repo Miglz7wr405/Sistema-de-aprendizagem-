@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   Ban,
+  Eye,
   Hourglass,
   KeyRound,
   LogIn,
@@ -47,6 +48,73 @@ function Aviso({ children }: { children: ReactNode }) {
       <AlertCircle className="mt-0.5 size-4 shrink-0" />
       <span>{children}</span>
     </div>
+  );
+}
+
+function TesteCincoMinutos() {
+  const { entrarTeste } = useAuth();
+  const [aberto, setAberto] = useState(false);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function entrarAgora(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return setErro("Escreve o teu email.");
+    setBusy(true);
+    setErro(null);
+    const falha = await entrarTeste(email);
+    setBusy(false);
+    if (falha) setErro(falha);
+  }
+
+  if (!aberto) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAberto(true)}
+        className="mt-5 flex w-full items-center gap-3 rounded-xl border border-accent/25 bg-accent-soft px-4 py-3 text-left transition hover:border-accent"
+      >
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent text-on-accent">
+          <Eye className="size-5" />
+        </span>
+        <span>
+          <span className="block text-sm font-semibold text-text-hi">
+            Espreita a academia por dentro
+          </span>
+          <span className="block text-xs text-text-mid">
+            Entra 5 minutos grátis e vê os cursos. Sem palavra-passe.
+          </span>
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={entrarAgora}
+      className="mt-5 space-y-3 rounded-xl border border-accent/25 bg-accent-soft p-4"
+    >
+      <p className="text-sm font-semibold text-text-hi">Entra 5 minutos grátis</p>
+      {erro && <Aviso>{erro}</Aviso>}
+      <Input
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        autoFocus
+        placeholder="o.teu@email.com"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          setErro(null);
+        }}
+      />
+      <Button type="submit" disabled={busy} className="h-11 w-full">
+        <Eye className="size-4" />
+        {busy ? "A abrir..." : "Entrar 5 minutos"}
+      </Button>
+      <p className="text-center text-[11px] text-text-low">Só podes usar o teste uma vez.</p>
+    </form>
   );
 }
 
@@ -128,6 +196,8 @@ export function EntrarPage() {
           </span>
         </div>
       )}
+
+      <TesteCincoMinutos />
 
       <div className="mt-6 border-t border-hairline pt-5 text-center">
         <p className="text-sm text-text-mid">Ainda não tens acesso?</p>
@@ -293,7 +363,8 @@ export function PedirAcessoPage() {
 
 /** Conta criada mas ainda não aprovada (ou recusada / bloqueada). */
 export function EstadoContaPage() {
-  const { perfil, sessao, sair, recarregarPerfil, acessoExpirado } = useAuth();
+  const { perfil, sessao, sair, recarregarPerfil, acessoExpirado, limiteAtingido, uso } = useAuth();
+  const navigate = useNavigate();
   const [aVerificar, setAVerificar] = useState(false);
 
   async function verificar() {
@@ -303,7 +374,14 @@ export function EstadoContaPage() {
     toast.message("Ainda à espera. Assim que fores aprovado, entras automaticamente.");
   }
 
-  const estado = acessoExpirado ? "expirado" : (perfil?.estado ?? "pendente");
+  const estado = acessoExpirado
+    ? perfil?.teste
+      ? "teste_fim"
+      : "expirado"
+    : limiteAtingido
+      ? "limite"
+      : (perfil?.estado ?? "pendente");
+  const horas = uso?.limite ? Math.round(uso.limite / 3600) : 0;
   const email = perfil?.email ?? sessao?.user.email;
 
   const conteudo = {
@@ -313,6 +391,19 @@ export function EstadoContaPage() {
       titulo: "O teu acesso terminou",
       texto:
         "O período de acesso à academia chegou ao fim. Fala com um administrador da Insight para renovares e voltares a ver as aulas.",
+    },
+    teste_fim: {
+      icone: Hourglass,
+      cor: "bg-accent-soft text-accent",
+      titulo: "Os teus 5 minutos acabaram",
+      texto:
+        "Gostaste do que viste? Pede acesso à academia para teres todos os cursos, o ranking e a comunidade.",
+    },
+    limite: {
+      icone: Hourglass,
+      cor: "bg-amber-50 text-amber-600",
+      titulo: "Chegaste ao limite de hoje",
+      texto: `O teu plano dá ${horas} ${horas === 1 ? "hora" : "horas"} por dia na academia. Volta amanhã, ou fala com a Insight para passares a Diamante (sem limite).`,
     },
     pendente: {
       icone: Hourglass,
@@ -360,6 +451,16 @@ export function EstadoContaPage() {
           {estado === "pendente" && (
             <Button onClick={verificar} disabled={aVerificar}>
               <RefreshCw className={cn("size-4", aVerificar && "animate-spin")} /> Verificar
+            </Button>
+          )}
+          {estado === "teste_fim" && (
+            <Button
+              onClick={async () => {
+                await sair();
+                navigate("/pedir-acesso");
+              }}
+            >
+              <UserPlus className="size-4" /> Pedir acesso
             </Button>
           )}
           <Button variant="outline" onClick={sair}>

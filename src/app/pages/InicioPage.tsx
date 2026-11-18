@@ -55,10 +55,16 @@ export default function InicioPage() {
           {/* Patente / plano de acesso */}
           {perfil?.plano && (
             <div className="mb-3 flex items-center gap-2">
-              <SeloPlano plano={perfil.plano} className="text-sm px-3 py-1" />
+              {perfil.teste ? (
+                <span className="selo bg-white text-accent">Teste</span>
+              ) : (
+                <SeloPlano plano={perfil.plano} className="text-sm px-3 py-1" />
+              )}
               <span className="text-xs font-medium text-white/85">
-                Acesso {PLANO[perfil.plano].selo} · {textoAcesso(perfil)}
-                {perfil.plano !== "legacy" && expiraEm && <> (até {expiraEm})</>}
+                {perfil.teste
+                  ? `Acesso de teste · restam ${textoAcesso(perfil)}`
+                  : `Acesso ${PLANO[perfil.plano].selo} · ${textoAcesso(perfil)}`}
+                {!perfil.teste && perfil.plano !== "legacy" && expiraEm && <> (até {expiraEm})</>}
               </span>
             </div>
           )}

@@ -72,15 +72,20 @@ export function BotaoImportarCursoDrive({
 
   return (
     <>
-      <Button variant="outline" className="h-8 px-2.5" onClick={() => setAberto(true)} title="Criar curso a partir de uma pasta do Google Drive">
+      <Button
+        variant="outline"
+        className="h-8 px-2.5"
+        onClick={() => setAberto(true)}
+        title="Criar curso a partir de uma pasta do Google Drive"
+      >
         <FolderDown className="size-4" /> Drive
       </Button>
       <Modal open={aberto} onClose={fechar} title="Importar curso do Google Drive">
         {!previa ? (
           <div className="space-y-4">
             <p className="text-sm text-text-mid">
-              Cola o link da pasta do curso. Cada subpasta vira um módulo e cada vídeo uma aula. A pasta tem de
-              estar partilhada como <strong>“Qualquer pessoa com o link”</strong>.
+              Cola o link da pasta do curso. Cada subpasta vira um módulo e cada vídeo uma aula. A
+              pasta tem de estar partilhada como <strong>“Qualquer pessoa com o link”</strong>.
             </p>
             <Field label="Link da pasta">
               <Input
@@ -93,7 +98,11 @@ export function BotaoImportarCursoDrive({
             </Field>
             <div className="flex justify-end">
               <Button onClick={ler} disabled={ocupado !== null}>
-                {ocupado === "ler" ? <Loader2 className="size-4 animate-spin" /> : <FolderDown className="size-4" />}
+                {ocupado === "ler" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <FolderDown className="size-4" />
+                )}
                 {ocupado === "ler" ? "A ler a pasta…" : "Ler pasta"}
               </Button>
             </div>
@@ -112,10 +121,16 @@ export function BotaoImportarCursoDrive({
             <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-hairline p-3">
               {previa.modulos.map((m, i) => (
                 <div key={i}>
-                  {m.titulo && <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">{m.titulo}</p>}
+                  {m.titulo && (
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">
+                      {m.titulo}
+                    </p>
+                  )}
                   <ol className="space-y-0.5 text-sm text-text-hi">
                     {m.aulas.map((a) => (
-                      <li key={a.url} className="truncate">· {a.titulo}</li>
+                      <li key={a.url} className="truncate">
+                        · {a.titulo}
+                      </li>
                     ))}
                   </ol>
                 </div>
@@ -126,8 +141,8 @@ export function BotaoImportarCursoDrive({
               <Switch checked={publicar} onChange={setPublicar} />
             </label>
             <p className="text-xs text-text-low">
-              Depois de criado, podes usar “Organizar com IA” e “Gerar títulos” no curso para dar nomes e módulos
-              automáticos às aulas.
+              Depois de criado, podes usar “Organizar com IA” e “Gerar títulos” no curso para dar
+              nomes e módulos automáticos às aulas.
             </p>
             <div className="flex justify-between gap-2">
               <Button variant="ghost" onClick={() => setPrevia(null)} disabled={ocupado !== null}>

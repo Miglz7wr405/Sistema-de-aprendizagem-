@@ -228,7 +228,7 @@ export const Social = {
   },
   /** Ranking de quem assistiu a mais vídeos no período. */
   async ranking(periodo: PeriodoRanking) {
-    const { data, error } = await supabase.rpc("ranking", { p_periodo: periodo });
+    const { data, error } = await supabase.rpc("ranking_v2", { p_periodo: periodo });
     falhar(error);
     return (data ?? []) as PosicaoRanking[];
   },

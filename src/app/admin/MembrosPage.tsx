@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
-import { Ban, Copy, KeyRound, MessageCircle, Search, ShieldCheck, Trash2, Users } from "lucide-react";
+import {
+  Ban,
+  Copy,
+  KeyRound,
+  MessageCircle,
+  Search,
+  ShieldCheck,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Perfis } from "@/lib/db";
@@ -43,7 +52,7 @@ export default function MembrosPage() {
   const { perfil: eu } = useAuth();
   const { data, loading, error, refetch } = useData(() => Perfis.todos(), []);
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<"todos" | Papel | "bloqueado">("todos");
+  const [filtro, setFiltro] = useState<"todos" | Papel | "bloqueado" | "teste">("todos");
   const [repor, setRepor] = useState<Perfil | null>(null);
   const [novaSenha, setNovaSenha] = useState("");
   const [aRepor, setARepor] = useState(false);
@@ -53,8 +62,9 @@ export default function MembrosPage() {
     const q = busca.trim().toLowerCase();
     return (data ?? [])
       .filter((p) => p.estado === "aprovado" || p.estado === "bloqueado")
+      .filter((p) => (filtro === "teste" ? Boolean(p.teste) : !p.teste))
       .filter((p) =>
-        filtro === "todos"
+        filtro === "todos" || filtro === "teste"
           ? true
           : filtro === "bloqueado"
             ? p.estado === "bloqueado"
@@ -95,7 +105,12 @@ export default function MembrosPage() {
   }
 
   async function eliminar(p: Perfil) {
-    if (!confirm(`Eliminar ${p.nome_completo} de vez? A conta, o progresso e as mensagens são apagados e não dá para desfazer.`)) return;
+    if (
+      !confirm(
+        `Eliminar ${p.nome_completo} de vez? A conta, o progresso e as mensagens são apagados e não dá para desfazer.`,
+      )
+    )
+      return;
     try {
       await apagarConta(p.id);
       toast.success(`${p.nome_completo} foi eliminado`);
@@ -121,11 +136,15 @@ export default function MembrosPage() {
 
   const contagem = (f: typeof filtro) =>
     data.filter((p) =>
-      f === "todos"
-        ? p.estado === "aprovado" || p.estado === "bloqueado"
-        : f === "bloqueado"
-          ? p.estado === "bloqueado"
-          : p.papel === f && p.estado === "aprovado",
+      f === "teste"
+        ? Boolean(p.teste)
+        : p.teste
+          ? false
+          : f === "todos"
+            ? p.estado === "aprovado" || p.estado === "bloqueado"
+            : f === "bloqueado"
+              ? p.estado === "bloqueado"
+              : p.papel === f && p.estado === "aprovado",
     ).length;
 
   return (
@@ -146,7 +165,7 @@ export default function MembrosPage() {
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {(["todos", "admin", "equipa", "aluno", "bloqueado"] as const).map((f) => (
+          {(["todos", "admin", "equipa", "aluno", "bloqueado", "teste"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFiltro(f)}
@@ -157,8 +176,14 @@ export default function MembrosPage() {
                   : "border-hairline bg-bg-elevated text-text-mid hover:border-accent",
               )}
             >
-              {f === "todos" ? "Todos" : f === "bloqueado" ? "Sem acesso" : PAPEL_LABEL[f]} (
-              {contagem(f)})
+              {f === "todos"
+                ? "Todos"
+                : f === "bloqueado"
+                  ? "Sem acesso"
+                  : f === "teste"
+                    ? "Testes 5 min"
+                    : PAPEL_LABEL[f]}{" "}
+              ({contagem(f)})
             </button>
           ))}
         </div>
@@ -262,8 +287,9 @@ export default function MembrosPage() {
                         variant="danger"
                         className="h-9 px-2.5 text-xs"
                         onClick={() =>
-                          confirm(`Tirar o acesso de ${p.nome_completo}? A conta fica guardada e podes devolver o acesso depois.`) &&
-                          mudar(p, { estado: "bloqueado" }, "Acesso retirado")
+                          confirm(
+                            `Tirar o acesso de ${p.nome_completo}? A conta fica guardada e podes devolver o acesso depois.`,
+                          ) && mudar(p, { estado: "bloqueado" }, "Acesso retirado")
                         }
                       >
                         <Ban className="size-4" /> Tirar acesso

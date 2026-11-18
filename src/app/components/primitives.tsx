@@ -36,26 +36,56 @@ export function SeloPlano({
   );
 }
 
-/** "Vitalício", "Expirado" ou "N dias" restantes de acesso. */
-export function textoAcesso(p: { plano: Plano; acesso_expira_em: string | null }) {
+type InfoAcesso = { plano: Plano; acesso_expira_em: string | null; teste?: boolean };
+
+/** "Vitalício", "Expirado", "N dias" ou, no teste, "N min". */
+export function textoAcesso(p: InfoAcesso) {
+  if (p.teste && p.acesso_expira_em) {
+    const min = Math.ceil((new Date(p.acesso_expira_em).getTime() - Date.now()) / 60000);
+    return min <= 0 ? "Terminado" : `${min} min`;
+  }
   if (p.plano === "legacy" || !p.acesso_expira_em) return "Vitalício";
   const dias = Math.ceil((new Date(p.acesso_expira_em).getTime() - Date.now()) / 86400000);
   if (dias < 0) return "Expirado";
   return `${dias} dia${dias === 1 ? "" : "s"}`;
 }
 
-/** Patente + dias de acesso, para o topo da app. */
+/** "1h 20" / "45 min" — tempo que ainda resta hoje. */
+function restaHoje(usado: number, limite: number) {
+  const min = Math.max(0, Math.floor((limite - usado) / 60));
+  return min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}` : `${min} min`;
+}
+
+/** Patente + validade (e tempo que resta hoje, nos planos com limite) para o topo da app. */
 export function AcessoChip({
   perfil,
+  uso,
   className,
 }: {
-  perfil: { plano: Plano; acesso_expira_em: string | null };
+  perfil: InfoAcesso & { papel?: string };
+  uso?: { usado: number; limite: number | null } | null;
   className?: string;
 }) {
+  if (perfil.teste) {
+    return (
+      <span className={cn("inline-flex items-center gap-1.5", className)} title="Acesso de teste">
+        <span className="selo bg-accent text-on-accent">Teste</span>
+        <span className="whitespace-nowrap text-xs font-medium text-text-mid">
+          {textoAcesso(perfil)}
+        </span>
+      </span>
+    );
+  }
+  const comLimite = perfil.papel === "aluno" && uso?.limite != null;
   return (
-    <span className={cn("inline-flex items-center gap-1.5", className)} title={`Acesso ${PLANO[perfil.plano]?.selo ?? ""}`}>
+    <span
+      className={cn("inline-flex items-center gap-1.5", className)}
+      title={`Acesso ${PLANO[perfil.plano]?.selo ?? ""}`}
+    >
       <SeloPlano plano={perfil.plano} brilho />
-      <span className="whitespace-nowrap text-xs font-medium text-text-mid">{textoAcesso(perfil)}</span>
+      <span className="whitespace-nowrap text-xs font-medium text-text-mid">
+        {comLimite ? `resta ${restaHoje(uso!.usado, uso!.limite!)} hoje` : textoAcesso(perfil)}
+      </span>
     </span>
   );
 }

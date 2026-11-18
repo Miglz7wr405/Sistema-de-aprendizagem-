@@ -2,9 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Session } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
-import { supabase } from "@/lib/supabase";
+import { chamarFuncao, supabase } from "@/lib/supabase";
 import { Perfis } from "@/lib/db";
-import { iniciarHeartbeat, limparSessaoLocal, registarSessaoAtual } from "@/lib/sessao";
+import {
+  iniciarHeartbeat,
+  limparSessaoLocal,
+  registarSessaoAtual,
+  type UsoDiario,
+} from "@/lib/sessao";
 import type { Perfil } from "@/lib/types";
 
 type AuthCtx = {
@@ -14,7 +19,12 @@ type AuthCtx = {
   eAdmin: boolean;
   eEquipa: boolean;
   acessoExpirado: boolean;
+  /** Tempo de hoje (segundos) e limite diário do plano (null = sem limite). */
+  uso: UsoDiario | null;
+  limiteAtingido: boolean;
   entrar: (email: string, palavraPasse: string) => Promise<string | null>;
+  /** Teste de 5 minutos (uma vez por IP/email). Devolve a mensagem de erro, se houver. */
+  entrarTeste: (email: string) => Promise<string | null>;
   sair: () => Promise<void>;
   recarregarPerfil: () => Promise<void>;
 };
@@ -46,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessao, setSessao] = useState<Session | null>(null);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [uso, setUso] = useState<UsoDiario | null>(null);
+  const [, setRelogio] = useState(0);
 
   const carregarPerfil = useCallback(async (s: Session | null) => {
     if (!s) {
@@ -105,9 +117,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       limparSessaoLocal();
       await supabase.auth.signOut();
-    });
-    return parar;
+    }, setUso);
+    return () => {
+      parar();
+      setUso(null);
+    };
   }, [sessao]);
+
+  // Quando a validade acaba (ex.: teste de 5 min), volta a desenhar para mostrar o fim do acesso.
+  useEffect(() => {
+    const fim = perfil?.acesso_expira_em ? new Date(perfil.acesso_expira_em).getTime() : 0;
+    const falta = fim - Date.now();
+    if (!fim || falta <= 0 || falta > 86400000) return;
+    const t = setTimeout(() => setRelogio((x) => x + 1), falta + 500);
+    return () => clearTimeout(t);
+  }, [perfil?.acesso_expira_em]);
 
   // Se o admin aprovar/bloquear enquanto a pessoa está na app, o estado muda sozinho.
   useEffect(() => {
@@ -140,6 +164,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? traduzirErro(error.message) : null;
   }, []);
 
+  const entrarTeste = useCallback(
+    async (email: string) => {
+      try {
+        const r = await chamarFuncao<{ email: string; senha: string }>("acesso-teste", { email });
+        return await entrar(r.email, r.senha);
+      } catch (e) {
+        return e instanceof Error ? e.message : "Não foi possível entrar.";
+      }
+    },
+    [entrar],
+  );
+
   const sair = useCallback(async () => {
     await supabase.auth.signOut();
     setPerfil(null);
@@ -155,7 +191,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     eAdmin: aprovado && perfil?.papel === "admin",
     eEquipa: aprovado && (perfil?.papel === "admin" || perfil?.papel === "equipa"),
     acessoExpirado: expirou(perfil),
+    uso,
+    limiteAtingido: Boolean(
+      perfil?.papel === "aluno" && uso?.limite != null && uso.usado >= uso.limite,
+    ),
     entrar,
+    entrarTeste,
     sair,
     recarregarPerfil,
   };

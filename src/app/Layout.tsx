@@ -145,7 +145,7 @@ function titulo(pathname: string) {
 
 export default function Layout() {
   const [menu, setMenu] = useState(false);
-  const { perfil, eAdmin } = useAuth();
+  const { perfil, eAdmin, uso } = useAuth();
   const location = useLocation();
   const pendentes = usePedidosPendentes(eAdmin);
   const modoChat = location.pathname.startsWith("/comunidade");
@@ -218,7 +218,7 @@ export default function Layout() {
             {titulo(location.pathname)}
           </p>
           <div className="ml-auto flex items-center gap-2">
-            {perfil?.plano && <AcessoChip perfil={perfil} />}
+            {perfil?.plano && <AcessoChip perfil={perfil} uso={uso} />}
             <NotificacoesSino />
             {perfil && <Avatar nome={perfil.nome_completo} tom="solid" />}
           </div>

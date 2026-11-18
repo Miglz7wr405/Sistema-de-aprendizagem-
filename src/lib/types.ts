@@ -16,6 +16,7 @@ export type Perfil = {
   estado: EstadoPerfil;
   plano: Plano;
   acesso_expira_em: string | null;
+  teste?: boolean;
   aprovado_por: string | null;
   aprovado_em: string | null;
   created_at: string;
@@ -154,6 +155,9 @@ export type PosicaoRanking = {
   total: number;
   concluidas: number;
   posicao: number;
+  ultima_aula: string | null;
+  ultimo_curso: string | null;
+  ultima_vista: string | null;
 };
 
 export type MembroPlano = { user_id: string; plano: Plano };

@@ -27,7 +27,7 @@ function SoAdmin({ children }: { children: ReactNode }) {
 }
 
 function Rotas() {
-  const { sessao, perfil, carregando, acessoExpirado } = useAuth();
+  const { sessao, perfil, carregando, acessoExpirado, limiteAtingido } = useAuth();
 
   if (carregando) {
     return (
@@ -47,7 +47,7 @@ function Rotas() {
     );
   }
 
-  if (perfil?.estado !== "aprovado" || acessoExpirado) return <EstadoContaPage />;
+  if (perfil?.estado !== "aprovado" || acessoExpirado || limiteAtingido) return <EstadoContaPage />;
 
   return (
     <Suspense

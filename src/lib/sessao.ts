@@ -8,7 +8,13 @@ const CHAVE_LOCAL = "insight-academia-sessao";
 const INTERVALO = 30 * 1000;
 
 type RegistoResposta = { ok: true; sessao_id: string };
-type VerificacaoResposta = { ativa: boolean; erro?: boolean };
+type VerificacaoResposta = {
+  ativa: boolean;
+  erro?: boolean;
+  usado?: number;
+  limite?: number | null;
+};
+export type UsoDiario = { usado: number; limite: number | null };
 
 /** Chamado logo depois de o utilizador entrar. Invalida qualquer sessão anterior. */
 export async function registarSessaoAtual(): Promise<string | null> {
@@ -44,7 +50,10 @@ export function limparSessaoLocal() {
  * Inicia o heartbeat: a cada 30s pergunta ao servidor se esta sessão ainda é a válida.
  * Devolve uma função para parar. `onExpulso` é chamado quando outro dispositivo tomou conta.
  */
-export function iniciarHeartbeat(onExpulso: () => void): () => void {
+export function iniciarHeartbeat(
+  onExpulso: () => void,
+  onUso?: (uso: UsoDiario) => void,
+): () => void {
   let parado = false;
 
   async function tick() {
@@ -55,7 +64,11 @@ export function iniciarHeartbeat(onExpulso: () => void): () => void {
     try {
       const r = await chamarFuncao<VerificacaoResposta>("verificar-sessao", {
         sessao_id: sessaoId,
+        visivel: document.visibilityState === "visible",
       });
+      if (!parado && r.ativa && typeof r.usado === "number") {
+        onUso?.({ usado: r.usado, limite: r.limite ?? null });
+      }
       if (!parado && !r.ativa && !r.erro) {
         parado = true;
         onExpulso();

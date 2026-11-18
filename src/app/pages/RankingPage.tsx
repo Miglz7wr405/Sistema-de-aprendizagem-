@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Crown, Trophy } from "lucide-react";
+import { Crown, PlayCircle, Trophy } from "lucide-react";
 
 import { Social } from "@/lib/db";
 import type { PeriodoRanking, PosicaoRanking } from "@/lib/types";
 import { PAPEL_LABEL } from "@/lib/types";
-import { cn, primeiroNome } from "@/lib/utils";
+import { cn, primeiroNome, tempoRelativo } from "@/lib/utils";
 import { useAuth } from "../auth";
 import {
   Avatar,
@@ -60,7 +60,12 @@ function Podio({ top, meuId }: { top: PosicaoRanking[]; meuId?: string }) {
                   ALTURA_BLOCO[i],
                 )}
               >
-                <span className={cn("font-display font-bold text-accent", i === 0 ? "text-5xl" : "text-4xl")}>
+                <span
+                  className={cn(
+                    "font-display font-bold text-accent",
+                    i === 0 ? "text-5xl" : "text-4xl",
+                  )}
+                >
                   {i + 1}
                 </span>
               </div>
@@ -163,12 +168,33 @@ export default function RankingPage() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-text-low">
+                  {p.ultima_aula ? (
+                    <p
+                      className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-text-mid"
+                      title={`${p.ultima_aula} — ${p.ultimo_curso ?? ""}`}
+                    >
+                      <PlayCircle className="size-3.5 shrink-0 text-accent" />
+                      <span className="truncate">
+                        <span className="font-medium text-text-hi">{p.ultima_aula}</span>
+                        {p.ultimo_curso && (
+                          <span className="text-text-low"> · {p.ultimo_curso}</span>
+                        )}
+                      </span>
+                      {p.ultima_vista && (
+                        <span className="shrink-0 text-text-low">
+                          · {tempoRelativo(p.ultima_vista)}
+                        </span>
+                      )}
+                    </p>
+                  ) : null}
+                  <p className="text-[11px] text-text-low">
                     {p.total} {p.total === 1 ? "vídeo visto" : "vídeos vistos"}
                   </p>
                 </div>
                 <span className="shrink-0 text-right">
-                  <span className="font-display text-lg font-bold text-text-hi">{p.concluidas}</span>
+                  <span className="font-display text-lg font-bold text-text-hi">
+                    {p.concluidas}
+                  </span>
                   <span className="block text-[11px] text-text-low">
                     concluída{p.concluidas === 1 ? "" : "s"}
                   </span>
