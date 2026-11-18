@@ -38,6 +38,11 @@ body { font-family: "Inter", sans-serif; color: #fff; }
 <div id="palco">
   <div id="capas"></div>
   <div id="telemovel"><canvas id="ecra" width="444" height="974"></canvas></div>
+  <div id="introEnr" class="abs" style="left:60px;top:560px;width:960px;opacity:0">
+    <canvas id="cvEnr" width="960" height="540" style="display:block;width:960px;height:540px;border-radius:30px;box-shadow:0 40px 100px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.15)"></canvas>
+    <div style="margin-top:40px;text-align:center;font-family:SG;font-weight:700;font-size:58px;letter-spacing:-.02em">Aula 1 · <span style="color:#8fb0ff">Introdução ao Treinamento</span></div>
+    <div style="margin-top:14px;text-align:center;font-size:40px;font-weight:600;color:#cfdcff">Seja bem-vindo ao curso 👋</div>
+  </div>
   <div id="textos"></div>
   <div id="linhas"></div>
   <div id="flash"></div>
@@ -52,10 +57,11 @@ const $ = (h, pai = document.getElementById("textos")) => { const d = document.c
 /* ── excertos da plataforma (fotogramas a 30 fps, já acelerados) ── */
 const CLIPS = { login: 92, areas: 143, aula: 119, perg: 42, comu: 40, rank: 103, casa: 71 };
 const IMG = {};
+const ENR = Array.from({ length: 66 }, (_, i) => { const im = new Image(); im.src = `out/clips/enrico/f${String(i + 1).padStart(3, "0")}.jpg`; return im; });
 for (const [n, q] of Object.entries(CLIPS)) IMG[n] = Array.from({ length: q }, (_, i) => { const im = new Image(); im.src = `out/clips/${n}/f${String(i + 1).padStart(3, "0")}.jpg`; return im; });
 const ecra = document.getElementById("ecra").getContext("2d");
 // [início, fim, clip] — o clip começa no início do plano
-const PLANOS = [[2.85, 6.6, "login"], [6.6, 11.9, "areas"], [16.9, 20.7, "aula"], [20.7, 22.2, "perg"], [22.2, 23.6, "comu"], [23.6, 27.45, "rank"], [27.45, 30.2, "casa"]];
+const PLANOS = [[2.85, 6.6, "login"], [6.6, 11.9, "areas"], [19.0, 20.7, "aula", 0.6], [20.7, 22.2, "perg"], [22.2, 23.6, "comu"], [23.6, 27.45, "rank"], [27.45, 30.2, "casa"]];
 
 /* ── textos (frases ao ritmo da voz) ── */
 const T = (html, top, size) => $(`<div class="txt" style="top:${top}px;font-size:${size}px">${html}</div>`);
@@ -103,7 +109,7 @@ function seek(t) {
   const pl = PLANOS.find(([a, b]) => t >= a && t < b);
   const tel = document.getElementById("telemovel");
   if (pl) {
-    const [a, b, n] = pl, lt = t - a, imgs = IMG[n];
+    const [a, b, n] = pl, lt = t - a + (pl[3] ?? 0), imgs = IMG[n];
     const im = imgs[clamp(Math.floor(lt * FPS), 0, imgs.length - 1)];
     if (im.complete && im.naturalWidth) ecra.drawImage(im, 0, 0, 444, 974);
     const ent = P(t, a, a + .3, "back");
@@ -137,7 +143,16 @@ function seek(t) {
   });
   slam(tNomes, t, 12.1, 16.9);
 
-  slam(tPlay, t, 17.15, 18.9); slam(tFeita, t, 18.9, 20.7);
+  slam(tPlay, t, 16.95, 19.0); slam(tFeita, t, 19.05, 20.7);
+  // aula de introdução do Enrico a tocar
+  const ie = document.getElementById("introEnr");
+  if (t >= 16.9 && t < 19.0) {
+    const lt = t - 16.9, pe = P(t, 16.9, 17.25, "back");
+    const im = ENR[clamp(Math.floor(lt * FPS), 0, ENR.length - 1)];
+    if (im.complete && im.naturalWidth) document.getElementById("cvEnr").getContext("2d").drawImage(im, 0, 0, 960, 540);
+    ie.style.opacity = Math.min(1, pe * 2);
+    ie.style.transform = `translateY(${(1 - pe) * 120}px) scale(${0.9 + 0.1 * pe})`;
+  } else ie.style.opacity = 0;
   slam(tDuvida, t, 20.8, 22.2); slam(tComu, t, 22.2, 23.6);
   slam(tRank, t, 23.7, 27.45); slam(tPremio, t, 25.5, 27.45);
   slam(tTelemovel, t, 27.55, 30.2); slam(tRitmo, t, 28.7, 30.2);
@@ -150,7 +165,7 @@ function seek(t) {
   bt.style.transform = `scale(${t > 31.2 ? 1 + .05 * Math.sin((t - 31.2) * 7) : 1})`;
 }
 window.seek = seek; window.DURACAO = DURACAO; window.FPS = FPS;
-window.ready = document.fonts.ready.then(() => Promise.all([...document.images, ...Object.values(IMG).flat()].map((i) => i.decode().catch(() => {})))).then(() => {
+window.ready = document.fonts.ready.then(() => Promise.all([...document.images, ...Object.values(IMG).flat(), ...ENR].map((i) => i.decode().catch(() => {})))).then(() => {
   // cada capa ocupa o máximo de 960×900 sem cortar nem deformar
   document.querySelectorAll(".capa .cartao").forEach((im) => {
     const k = Math.min(960 / im.naturalWidth, 900 / im.naturalHeight);
