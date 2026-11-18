@@ -16,8 +16,23 @@ type VerificacaoResposta = {
 };
 export type UsoDiario = { usado: number; limite: number | null };
 
-/** Chamado logo depois de o utilizador entrar. Invalida qualquer sessão anterior. */
-export async function registarSessaoAtual(): Promise<string | null> {
+let registoEmCurso: Promise<string | null> | null = null;
+
+/**
+ * Chamado logo depois de o utilizador entrar. Invalida qualquer sessão anterior.
+ * Pedidos em simultâneo partilham o mesmo registo — dois registos em paralelo deixavam
+ * o id local diferente do do servidor, e a pessoa era expulsa segundos depois de entrar.
+ */
+export function registarSessaoAtual(): Promise<string | null> {
+  if (!registoEmCurso) {
+    registoEmCurso = registar().finally(() => {
+      registoEmCurso = null;
+    });
+  }
+  return registoEmCurso;
+}
+
+async function registar(): Promise<string | null> {
   try {
     const r = await chamarFuncao<RegistoResposta>("registar-sessao", {});
     if (r?.sessao_id) {
@@ -58,6 +73,7 @@ export function iniciarHeartbeat(
 
   async function tick() {
     if (parado) return;
+    if (registoEmCurso) await registoEmCurso;
     const sessaoId = lerSessaoLocal();
     const sessao = (await supabase.auth.getSession()).data.session;
     if (!sessao || !sessaoId) return;
