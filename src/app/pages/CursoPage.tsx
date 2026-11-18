@@ -11,6 +11,7 @@ import {
   Eye,
   ListVideo,
   Loader2,
+  Maximize2,
   MessageCircleQuestion,
   Pencil,
   Play,
@@ -101,6 +102,28 @@ function CapaDrive({ aula }: { aula: Aula }) {
   );
 }
 
+/** Ecrã inteiro a sério (Fullscreen API) + rodar para horizontal, quando o navegador deixa. */
+async function entrarEcraInteiro(el: HTMLElement | null) {
+  try {
+    if (el && !document.fullscreenElement && el.requestFullscreen) {
+      await el.requestFullscreen({ navigationUI: "hide" });
+    }
+    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    await o.lock?.("landscape");
+  } catch {
+    /* iPhone e alguns navegadores não deixam: fica o ecrã inteiro "falso" (fixo) */
+  }
+}
+
+function sairEcraInteiro() {
+  try {
+    (screen.orientation as ScreenOrientation & { unlock?: () => void }).unlock?.();
+  } catch {
+    /* ignora */
+  }
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+
 function EcraInteiroDrive({
   src,
   titulo,
@@ -112,10 +135,12 @@ function EcraInteiroDrive({
 }) {
   const fecharRef = useRef(onFechar);
   fecharRef.current = onFechar;
+  const caixaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const overflowAntes = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    entrarEcraInteiro(caixaRef.current);
     // Uma entrada no histórico para o botão "voltar" do telemóvel fechar o vídeo.
     history.pushState({ leitorDrive: true }, "");
     const aoVoltar = () => fecharRef.current();
@@ -123,34 +148,38 @@ function EcraInteiroDrive({
     return () => {
       document.body.style.overflow = overflowAntes;
       window.removeEventListener("popstate", aoVoltar);
+      sairEcraInteiro();
     };
   }, []);
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex h-[100dvh] flex-col bg-black"
+      ref={caixaRef}
+      className="fixed inset-0 z-[100] grid h-[100dvh] w-screen place-items-center bg-black"
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="flex h-12 shrink-0 items-center gap-2 px-2 text-white">
-        <button
-          onClick={() => history.back()}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/10 px-3 text-sm font-medium"
-        >
-          <X className="size-4" /> Fechar
-        </button>
-        <span className="min-w-0 truncate text-sm text-white/80">{titulo}</span>
-      </div>
-      <div className="relative min-h-0 flex-1 select-none">
+      {/* Vídeo sempre em 16:9, o maior possível: na vertical fica centrado, na horizontal enche o ecrã. */}
+      <div
+        className="relative select-none"
+        style={{ width: "min(100vw, calc(100dvh * 16 / 9))", aspectRatio: "16 / 9" }}
+      >
+        {/* Sem "fullscreen" no iframe: o botão de ecrã inteiro do Drive criava uma 2.ª camada por cima. */}
         <iframe
           src={src}
           title={titulo}
           className="absolute inset-0 h-full w-full"
-          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-          allowFullScreen
+          allow="autoplay; encrypted-media"
         />
         <div aria-hidden="true" className="absolute right-0 top-0 h-14 w-16 bg-black" />
         <MarcaDeAgua />
       </div>
+      <button
+        onClick={() => history.back()}
+        className="absolute left-3 top-3 z-10 inline-flex h-9 items-center gap-1.5 rounded-full bg-black/70 px-3 text-sm font-medium text-white ring-1 ring-white/20"
+        style={{ marginTop: "env(safe-area-inset-top)" }}
+      >
+        <X className="size-4" /> Fechar
+      </button>
     </div>,
     document.body,
   );
@@ -227,7 +256,8 @@ function Leitor({ aula }: { aula: Aula }) {
   if (leitor.tipo === "iframe") {
     const ehDrive = Boolean(driveId(aula.url));
     const ehVimeo = leitor.src.startsWith("https://player.vimeo.com/");
-    const movel = ehDrive && (largura || window.innerWidth) < LARGURA_MOVEL;
+    const tatil = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+    const movel = ehDrive && (tatil || (largura || window.innerWidth) < LARGURA_MOVEL);
     return (
       <div>
         <div
@@ -253,8 +283,12 @@ function Leitor({ aula }: { aula: Aula }) {
                 src={leitor.src}
                 title={aula.titulo}
                 className="absolute inset-0 h-full w-full"
-                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                allowFullScreen
+                allow={
+                  ehDrive
+                    ? "autoplay; encrypted-media"
+                    : "autoplay; encrypted-media; fullscreen; picture-in-picture"
+                }
+                allowFullScreen={!ehDrive}
               />
               {ehDrive && (
                 // Esconde e bloqueia o botão "abrir noutra janela" do Drive.
@@ -264,6 +298,20 @@ function Leitor({ aula }: { aula: Aula }) {
                   className="absolute right-0 top-0 h-14 w-16 rounded-bl-2xl bg-black"
                   onContextMenu={semMenu}
                 />
+              )}
+              {ehDrive && (
+                // Ecrã inteiro da plataforma (o do Drive foi desligado): mantém a posição do vídeo.
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    const caixaEl = (e.currentTarget as HTMLElement).parentElement;
+                    if (document.fullscreenElement) sairEcraInteiro();
+                    else entrarEcraInteiro(caixaEl);
+                  }}
+                  className="absolute left-2 top-2 z-10 inline-flex h-8 items-center gap-1.5 rounded-full bg-black/70 px-3 text-xs font-medium text-white ring-1 ring-white/20 hover:bg-black/85"
+                >
+                  <Maximize2 className="size-3.5" /> Ecrã inteiro
+                </button>
               )}
               {ehVimeo && (
                 // No plano gratuito o Vimeo não deixa esconder "gosto", "ver mais tarde"
