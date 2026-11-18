@@ -22,10 +22,12 @@ body { font-family: "Inter", sans-serif; color: #fff; }
   transform-style: preserve-3d; }
 #ecra { width: 566px; height: 1266px; border-radius: 48px; display: block; background: #f4f7fc; }
 .capa { position: absolute; inset: 0; overflow: hidden; }
-.capa img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.capa .fundo { position: absolute; inset: -60px; width: calc(100% + 120px); height: calc(100% + 120px); object-fit: cover; filter: blur(38px) brightness(.55) saturate(1.2); }
+.capa .cartao { position: absolute; left: 50%; top: 720px; max-width: 960px; max-height: 900px; border-radius: 30px;
+  box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.15); }
 .capa .sombra { position: absolute; inset: 0; background: linear-gradient(to top, rgba(3,6,15,.95) 0%, rgba(3,6,15,.2) 55%, rgba(3,6,15,.35) 100%); }
-.capa .nome { position: absolute; left: 70px; right: 70px; bottom: 300px; font-family: "SG"; font-weight: 700; font-size: 120px; line-height: .92; letter-spacing: -.03em; text-transform: uppercase; }
-.capa .sub { position: absolute; left: 74px; bottom: 230px; font-size: 40px; font-weight: 600; color: #8fb0ff; }
+.capa .nome { position: absolute; left: 70px; right: 70px; bottom: 330px; font-family: "SG"; font-weight: 700; font-size: 120px; line-height: .92; letter-spacing: -.03em; text-transform: uppercase; }
+.capa .sub { position: absolute; left: 74px; bottom: 260px; font-size: 40px; font-weight: 600; color: #8fb0ff; }
 #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 #linhas { position: absolute; inset: 0; pointer-events: none; opacity: .5;
   background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 4px); }
@@ -73,9 +75,9 @@ const cta = $(`<div class="abs" style="left:0;right:0;top:520px;text-align:cente
   <div style="margin-top:80px;font-size:38px;font-weight:600;line-height:1.6;color:#cfdcff">WhatsApp<br>+351 933 652 888 · +258 86 727 2348</div></div>`);
 
 /* ── capas dos cursos (cortes rápidos) ── */
-const CAPAS = [["bessan.jpg", "Matheus<br>Bessan", "Do zero aos 1000 USD"], ["finch.jpg", "Thiago<br>Finch", "Funnel Bureau"],
+const CAPAS = [["bessan.jpg", "Matheus<br>Bessan", "Do zero aos 1000 USD"], ["finch_aula.jpg", "Thiago<br>Finch", "Funnel Bureau"],
   ["caio.jpg", "Caio<br>Martins", "Vende em 24 horas"], ["enrico.png", "Enrico", "Marketing & Copywriting"]];
-const capas = CAPAS.map(([f, n, s]) => $(`<div class="capa"><img src="out/covers/${f}"><div class="sombra"></div><div class="nome">${n}</div><div class="sub">${s}</div></div>`, document.getElementById("capas")));
+const capas = CAPAS.map(([f, n, s]) => $(`<div class="capa"><img class="fundo" src="out/covers/${f}"><img class="cartao" src="out/covers/${f}"><div class="sombra"></div><div class="nome">${n}</div><div class="sub">${s}</div></div>`, document.getElementById("capas")));
 const T_CAPA = [12.1, 13.25, 14.4, 15.55, 16.9];
 
 const st = (el, op, tf = "none") => { el.style.opacity = op; el.style.transform = tf; };
@@ -127,7 +129,9 @@ function seek(t) {
   capas.forEach((c, i) => {
     const a = T_CAPA[i], b = T_CAPA[i + 1], vis = t >= a && t < b, lt = t - a;
     c.style.opacity = vis ? 1 : 0;
-    c.querySelector("img").style.transform = `scale(${1.18 - lt * .06}) translateX(${(i % 2 ? -1 : 1) * lt * 12}px)`;
+    c.querySelector(".fundo").style.transform = `scale(${1.1 + lt * .04})`;
+    const pc = P(t, a, a + .35, "back");
+    c.querySelector(".cartao").style.transform = `translate(-50%, -50%) scale(${(0.86 + 0.14 * pc) * (1 + lt * .025)}) rotate(${(i % 2 ? 1 : -1) * (1 - pc) * 4}deg)`;
     const nm = c.querySelector(".nome"), p = P(t, a, a + .3, "back");
     nm.style.transform = `translateY(${(1 - p) * 80}px)`; nm.style.opacity = p;
   });
@@ -146,7 +150,15 @@ function seek(t) {
   bt.style.transform = `scale(${t > 31.2 ? 1 + .05 * Math.sin((t - 31.2) * 7) : 1})`;
 }
 window.seek = seek; window.DURACAO = DURACAO; window.FPS = FPS;
-window.ready = document.fonts.ready.then(() => Promise.all([...document.images, ...Object.values(IMG).flat()].map((i) => i.decode().catch(() => {})))).then(() => { seek(0); return true; });
+window.ready = document.fonts.ready.then(() => Promise.all([...document.images, ...Object.values(IMG).flat()].map((i) => i.decode().catch(() => {})))).then(() => {
+  // cada capa ocupa o máximo de 960×900 sem cortar nem deformar
+  document.querySelectorAll(".capa .cartao").forEach((im) => {
+    const k = Math.min(960 / im.naturalWidth, 900 / im.naturalHeight);
+    im.style.width = Math.round(im.naturalWidth * k) + "px"; im.style.height = Math.round(im.naturalHeight * k) + "px";
+    im.style.maxWidth = "none"; im.style.maxHeight = "none";
+  });
+  seek(0); return true;
+});
 </script>
 </body>
 </html>
