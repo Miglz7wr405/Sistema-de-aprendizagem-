@@ -131,16 +131,16 @@ export default function RankingPage() {
           description="Assim que as pessoas começarem a concluir aulas, aparecem aqui por ordem."
         />
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
           {/* Pódio: à direita no computador, em cima no telemóvel */}
-          <div className="lg:order-2">
+          <div className="min-w-0 lg:order-2">
             <div className="lg:sticky lg:top-24">
               <Podio top={lista.slice(0, 3)} meuId={meuId} />
             </div>
           </div>
 
           {/* Lista completa */}
-          <div className="app-card divide-y divide-hairline lg:order-1">
+          <div className="app-card min-w-0 divide-y divide-hairline overflow-hidden lg:order-1">
             {lista.map((p) => (
               <div
                 key={p.user_id}
