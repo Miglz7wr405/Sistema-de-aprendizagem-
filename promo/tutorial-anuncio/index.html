@@ -48,7 +48,7 @@ const P = (t, a, b, e = "out") => E[e](clamp((t - a) / (b - a)));
 const $ = (h, pai = document.getElementById("textos")) => { const d = document.createElement("div"); d.innerHTML = h; const el = d.firstElementChild; pai.appendChild(el); return el; };
 
 /* ── excertos da plataforma (fotogramas a 30 fps, já acelerados) ── */
-const CLIPS = { login: 92, areas: 143, aula: 103, perg: 42, comu: 40, rank: 103, casa: 71 };
+const CLIPS = { login: 92, areas: 143, aula: 119, perg: 42, comu: 40, rank: 103, casa: 71 };
 const IMG = {};
 for (const [n, q] of Object.entries(CLIPS)) IMG[n] = Array.from({ length: q }, (_, i) => { const im = new Image(); im.src = `out/clips/${n}/f${String(i + 1).padStart(3, "0")}.jpg`; return im; });
 const ecra = document.getElementById("ecra").getContext("2d");
@@ -61,7 +61,7 @@ const gancho = ["Queres", "aprender", "a faturar", "<span class=az>online?</span
 const tEntras = T("Entras…", 150, 130), tTudo = T("e está <span class=az>tudo aqui</span>", 150, 110);
 const chips = ["Marketing digital", "TikTok Shop", "Tráfego pago", "Design"].map((c) => $(`<div class="chip">${c}</div>`));
 const tNomes = T("Os <span class=az>maiores nomes</span>", 160, 90);
-const tPlay = T("▶ Play", 140, 130), tFeita = T("✓ <span class=az>Concluída</span>", 140, 120);
+const tPlay = T("▶ Aulas do <span class=az>Enrico</span>", 140, 104), tFeita = T("✓ <span class=az>Concluída</span>", 140, 120);
 const tDuvida = T("Tira <span class=az>dúvidas</span>", 140, 120), tComu = T("<span class=az>Comunidade</span>", 140, 120);
 const tRank = T("Sobe no <span class=az>ranking</span>", 140, 110), tPremio = T("🏆 Top 3 do mês <span class=az>ganha prémio</span>", 1770, 60);
 const tTelemovel = T("No teu <span class=az>telemóvel</span>", 140, 110), tRitmo = T("ao teu ritmo", 1770, 70);
