@@ -1,11 +1,9 @@
 -- 1) Acesso de teste de 5 minutos (uma vez por IP e por email).
 -- 2) Limite diário de tempo por plano (Bronze 1 h, Prata 2 h, Ouro 4 h, Diamante sem limite).
--- 3) Ranking mostra a última aula vista e ignora contas de teste.
+-- 3) Ranking (ranking_v2) mostra a última aula vista e ignora contas de teste.
 
--- ── plano "teste" ──
-alter table public.perfis drop constraint if exists perfis_plano_check;
-alter table public.perfis
-  add constraint perfis_plano_check check (plano in ('semana', 'mes', 'ano', 'legacy', 'teste'));
+-- ── contas de teste (sem apagar nada: coluna nova; usam o plano 'semana' com 5 min de validade) ──
+alter table public.perfis add column if not exists teste boolean not null default false;
 
 -- Registo de quem já usou o teste (o IP fica guardado só como hash).
 create table if not exists public.acessos_teste (
@@ -25,9 +23,13 @@ create table if not exists public.uso_diario (
   primary key (user_id, dia)
 );
 alter table public.uso_diario enable row level security;
-drop policy if exists "uso_diario_ver_o_meu" on public.uso_diario;
-create policy "uso_diario_ver_o_meu" on public.uso_diario
-  for select to authenticated using (user_id = (select auth.uid()));
+do $$
+begin
+  if not exists (select 1 from pg_policies where tablename = 'uso_diario' and policyname = 'uso_diario_ver_o_meu') then
+    create policy "uso_diario_ver_o_meu" on public.uso_diario
+      for select to authenticated using (user_id = (select auth.uid()));
+  end if;
+end $$;
 
 -- Dia corrente no fuso de Maputo (o limite volta a zero à meia-noite de lá).
 create or replace function public.hoje()
@@ -42,7 +44,7 @@ returns integer language sql immutable set search_path = '' as $$
     when 'semana' then 3600   -- Bronze: 1 h
     when 'mes'    then 7200   -- Prata: 2 h
     when 'ano'    then 14400  -- Ouro: 4 h
-    else null                 -- Diamante (legacy) e teste: sem limite diário
+    else null                 -- Diamante (legacy): sem limite diário
   end;
 $$;
 
@@ -107,8 +109,8 @@ declare
   v_nome text := coalesce(nullif(trim(new.raw_user_meta_data ->> 'nome_completo'), ''), split_part(v_email, '@', 1));
 begin
   if v_teste and not v_fundador then
-    insert into public.perfis (id, nome_completo, email, papel, estado, plano, acesso_expira_em, aprovado_em)
-    values (new.id, v_nome, v_email, 'aluno', 'aprovado', 'teste', now() + interval '5 minutes', now());
+    insert into public.perfis (id, nome_completo, email, papel, estado, plano, teste, acesso_expira_em, aprovado_em)
+    values (new.id, v_nome, v_email, 'aluno', 'aprovado', 'semana', true, now() + interval '5 minutes', now());
     return new;
   end if;
 
@@ -137,9 +139,8 @@ begin
 end;
 $$;
 
--- ── ranking: última aula vista; sem contas de teste ──
-drop function if exists public.ranking(text);
-create function public.ranking(p_periodo text default 'geral')
+-- ── ranking v2: última aula vista; sem contas de teste (a função antiga fica intacta) ──
+create or replace function public.ranking_v2(p_periodo text default 'geral')
 returns table (
   user_id uuid,
   nome text,
@@ -194,11 +195,11 @@ as $$
   join public.perfis pf on pf.id = b.user_id
   left join ultima u on u.user_id = b.user_id
   where pf.estado = 'aprovado'
-    and pf.plano <> 'teste'
+    and not pf.teste
     and public.e_aprovado()
   order by posicao
   limit 100;
 $$;
 
-revoke execute on function public.ranking(text) from public, anon;
-grant execute on function public.ranking(text) to authenticated;
+revoke execute on function public.ranking_v2(text) from public, anon;
+grant execute on function public.ranking_v2(text) to authenticated;
