@@ -271,8 +271,9 @@ function Leitor({ aula }: { aula: Aula }) {
   if (leitor.tipo === "iframe") {
     const ehDrive = Boolean(driveId(aula.url));
     const ehVimeo = leitor.src.startsWith("https://player.vimeo.com/");
-    const tatil = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-    const movel = ehDrive && (tatil || (largura || window.innerWidth) < LARGURA_MOVEL);
+    // Drive abre sempre como no telemóvel (capa → leitor a ecrã inteiro): no PC, o player
+    // embutido na página ficava preto em alguns Chrome/Windows.
+    const movel = ehDrive;
     return (
       <div>
         <div
