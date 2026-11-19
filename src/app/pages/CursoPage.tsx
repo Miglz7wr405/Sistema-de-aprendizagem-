@@ -219,7 +219,13 @@ function Leitor({ aula }: { aula: Aula }) {
   const [refCaixa, largura] = useLargura<HTMLDivElement>();
   const [ecraInteiro, setEcraInteiro] = useState(false);
 
-  useEffect(() => setEcraInteiro(false), [aula.id]);
+  // PC: o player do Drive só é carregado depois de carregar na capa (antes disso ficava preto).
+  const [aTocar, setATocar] = useState(false);
+
+  useEffect(() => {
+    setEcraInteiro(false);
+    setATocar(false);
+  }, [aula.id]);
 
   useEffect(() => {
     const bloquear = (e: KeyboardEvent) => {
@@ -271,9 +277,10 @@ function Leitor({ aula }: { aula: Aula }) {
   if (leitor.tipo === "iframe") {
     const ehDrive = Boolean(driveId(aula.url));
     const ehVimeo = leitor.src.startsWith("https://player.vimeo.com/");
-    // Drive abre sempre como no telemóvel (capa → leitor a ecrã inteiro): no PC, o player
-    // embutido na página ficava preto em alguns Chrome/Windows.
-    const movel = ehDrive;
+    const tatil = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+    // Telemóvel: capa → leitor a ecrã inteiro. PC: capa → vídeo toca ali mesmo na página.
+    const movel = ehDrive && (tatil || (largura || window.innerWidth) < LARGURA_MOVEL);
+    const mostrarCapa = ehDrive && (movel || !aTocar);
     return (
       <div>
         <div
@@ -281,18 +288,18 @@ function Leitor({ aula }: { aula: Aula }) {
           // No PC o Drive fica preto dentro de uma caixa que recorta (overflow + cantos
           // redondos) em alguns Chrome/Windows com aceleração gráfica: aqui sem recorte.
           className={
-            ehDrive && !movel
+            ehDrive && !mostrarCapa
               ? "relative w-full select-none border border-hairline bg-black"
               : caixa
           }
           style={{ aspectRatio: "16 / 9" }}
           onContextMenu={semMenu}
         >
-          {movel ? (
+          {mostrarCapa ? (
             <button
               type="button"
               aria-label={`Assistir ${aula.titulo}`}
-              onClick={() => setEcraInteiro(true)}
+              onClick={() => (movel ? setEcraInteiro(true) : setATocar(true))}
               className="absolute inset-0"
             >
               <CapaDrive aula={aula} />
