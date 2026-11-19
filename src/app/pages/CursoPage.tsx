@@ -96,7 +96,7 @@ function CapaDrive({ aula }: { aula: Aula }) {
         <Play className="size-7 translate-x-0.5 fill-current" />
       </span>
       <span className="absolute inset-x-0 bottom-3 text-center text-sm font-medium text-white drop-shadow">
-        Toca para assistir
+        {window.matchMedia?.("(any-hover: hover)").matches ? "Clica para assistir" : "Toca para assistir"}
       </span>
     </div>
   );
@@ -277,9 +277,11 @@ function Leitor({ aula }: { aula: Aula }) {
   if (leitor.tipo === "iframe") {
     const ehDrive = Boolean(driveId(aula.url));
     const ehVimeo = leitor.src.startsWith("https://player.vimeo.com/");
-    const tatil = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-    // Telemóvel: capa → leitor a ecrã inteiro. PC: capa → vídeo toca ali mesmo na página.
-    const movel = ehDrive && (tatil || (largura || window.innerWidth) < LARGURA_MOVEL);
+    // PC = tem rato (mesmo com ecrã tátil) e ecrã largo. Telemóvel/tablet: capa → leitor a
+    // ecrã inteiro. PC: capa → vídeo toca ali mesmo na página.
+    const temRato = window.matchMedia?.("(any-hover: hover)").matches ?? true;
+    const pc = temRato && window.innerWidth >= 900;
+    const movel = ehDrive && (!pc || (largura || window.innerWidth) < LARGURA_MOVEL);
     const mostrarCapa = ehDrive && (movel || !aTocar);
     return (
       <div>
