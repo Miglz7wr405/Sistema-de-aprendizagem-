@@ -277,7 +277,13 @@ function Leitor({ aula }: { aula: Aula }) {
       <div>
         <div
           ref={refCaixa}
-          className={caixa}
+          // No PC o Drive fica preto dentro de uma caixa que recorta (overflow + cantos
+          // redondos) em alguns Chrome/Windows com aceleração gráfica: aqui sem recorte.
+          className={
+            ehDrive && !movel
+              ? "relative w-full select-none border border-hairline bg-black"
+              : caixa
+          }
           style={{ aspectRatio: "16 / 9" }}
           onContextMenu={semMenu}
         >
@@ -308,7 +314,7 @@ function Leitor({ aula }: { aula: Aula }) {
                 <div
                   aria-hidden="true"
                   data-capa-drive
-                  className="absolute right-0 top-0 h-14 w-16 rounded-bl-2xl bg-black"
+                  className="absolute right-0 top-0 h-14 w-16 bg-black"
                   onContextMenu={semMenu}
                 />
               )}
