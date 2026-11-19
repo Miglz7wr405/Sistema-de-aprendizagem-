@@ -124,6 +124,18 @@ function sairEcraInteiro() {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
 }
 
+/** Bloqueia o botão de ecrã inteiro do próprio Drive (canto inferior direito da barra). */
+function BloqueioEcraInteiroDrive() {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute bottom-0 right-0 z-[1] h-12 w-12"
+      onContextMenu={(e) => e.preventDefault()}
+      onDoubleClick={(e) => e.preventDefault()}
+    />
+  );
+}
+
 function EcraInteiroDrive({
   src,
   titulo,
@@ -163,14 +175,17 @@ function EcraInteiroDrive({
         className="relative select-none"
         style={{ width: "min(100vw, calc(100dvh * 16 / 9))", aspectRatio: "16 / 9" }}
       >
-        {/* Sem "fullscreen" no iframe: o botão de ecrã inteiro do Drive criava uma 2.ª camada por cima. */}
+        {/* O player do Drive fica preto sem a permissão "fullscreen": damos a permissão e
+            tapamos o botão de ecrã inteiro dele (criava uma 2.ª camada por cima). */}
         <iframe
           src={src}
           title={titulo}
           className="absolute inset-0 h-full w-full"
-          allow="autoplay; encrypted-media"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allowFullScreen
         />
         <div aria-hidden="true" className="absolute right-0 top-0 h-14 w-16 bg-black" />
+        <BloqueioEcraInteiroDrive />
         <MarcaDeAgua />
       </div>
       <button
@@ -283,13 +298,11 @@ function Leitor({ aula }: { aula: Aula }) {
                 src={leitor.src}
                 title={aula.titulo}
                 className="absolute inset-0 h-full w-full"
-                allow={
-                  ehDrive
-                    ? "autoplay; encrypted-media"
-                    : "autoplay; encrypted-media; fullscreen; picture-in-picture"
-                }
-                allowFullScreen={!ehDrive}
+                // Sem "fullscreen" o player do Drive fica todo preto: a permissão tem de ficar.
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                allowFullScreen
               />
+              {ehDrive && <BloqueioEcraInteiroDrive />}
               {ehDrive && (
                 // Esconde e bloqueia o botão "abrir noutra janela" do Drive.
                 <div
