@@ -62,16 +62,36 @@ function teclaBloqueada(e: KeyboardEvent) {
   return false;
 }
 
+// Posições por onde a marca de água vai passando (em % da caixa do vídeo).
+const POSICOES_MARCA = [
+  { left: "4%", top: "12%" },
+  { left: "58%", top: "20%" },
+  { left: "30%", top: "48%" },
+  { left: "6%", top: "78%" },
+  { left: "55%", top: "72%" },
+];
+
+/** E-mail de quem está a ver, a mudar de sítio: uma gravação mostra sempre quem a fez. */
 function MarcaDeAgua() {
   const { sessao } = useAuth();
   const email = sessao?.user.email;
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setI((n) => (n + 1) % POSICOES_MARCA.length), 7000);
+    return () => window.clearInterval(t);
+  }, []);
   if (!email) return null;
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 select-none overflow-hidden"
     >
-      <span className="absolute left-3 top-7 text-[10px] font-medium text-white/30">{email}</span>
+      <span
+        className="absolute whitespace-nowrap text-[11px] font-semibold text-white/35 transition-all duration-[1500ms] [text-shadow:0_0_2px_rgba(0,0,0,.6)]"
+        style={POSICOES_MARCA[i]}
+      >
+        {email}
+      </span>
     </div>
   );
 }
@@ -96,7 +116,9 @@ function CapaDrive({ aula }: { aula: Aula }) {
         <Play className="size-7 translate-x-0.5 fill-current" />
       </span>
       <span className="absolute inset-x-0 bottom-3 text-center text-sm font-medium text-white drop-shadow">
-        {window.matchMedia?.("(any-hover: hover)").matches ? "Clica para assistir" : "Toca para assistir"}
+        {window.matchMedia?.("(any-hover: hover)").matches
+          ? "Clica para assistir"
+          : "Toca para assistir"}
       </span>
     </div>
   );

@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "./auth";
 import { Logo } from "./components/Logo";
 import { NotificacoesSino } from "./components/NotificacoesSino";
+import { VigiaGravacao } from "./components/VigiaGravacao";
 import { AcessoChip, Avatar } from "./components/primitives";
 
 type ItemNav = { label: string; to: string; icon: LucideIcon; end?: boolean };
@@ -155,6 +156,7 @@ export default function Layout() {
 
   return (
     <div className="app-shell flex min-h-screen">
+      <VigiaGravacao />
       <aside className="sticky top-0 hidden h-[100dvh] w-[260px] shrink-0 flex-col border-r border-hairline bg-bg-elevated lg:flex">
         <div className="flex h-16 items-center border-b border-hairline px-5">
           <Logo />
