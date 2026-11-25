@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowDown,
@@ -37,8 +37,8 @@ import { limparNomeFicheiro, type FicheiroDrive } from "@/lib/google-picker";
 import { BotaoImportarVimeo, type VideoVimeo } from "../components/VimeoImporter";
 import { BotaoCorrigirPrivacidadeVimeo } from "../components/CorrigirPrivacidadeVimeo";
 import { BotaoImportarCursoDrive } from "../components/ImportarCursoDrive";
-import { BotaoOrganizarAulas } from "../components/OrganizarAulas";
-import { BotaoGerarTextos, gerarUmaAula } from "../components/GerarTextos";
+import { gerarUmaAula } from "../components/GerarTextos";
+import { BotaoIACurso, aoMudarTarefas } from "../components/TarefasIA";
 import { Field, Input, Modal, Select, Switch, Textarea } from "../components/Modal";
 import { Badge, Button, Carregando, Erro, PageHeader } from "../components/primitives";
 import { useData } from "../use-data";
@@ -320,6 +320,8 @@ export default function ConteudoPage() {
     capa_url: "",
     visibilidade: "academia",
   });
+  // Quando uma tarefa de IA (segundo plano) acaba, mostra os textos/módulos novos.
+  useEffect(() => aoMudarTarefas(() => void refetch()), [refetch]);
   const [modalCurso, setModalCurso] = useState<Curso | "novo" | null>(null);
   const [fc, setFc] = useState<FormCurso>({
     titulo: "",
@@ -864,17 +866,7 @@ export default function ConteudoPage() {
                     <ExternalLink className="size-4" />
                   </Button>
                 </Link>
-                {aulas.length > 0 && (
-                  <BotaoGerarTextos cursoId={curso.id} disabled={busy} onConcluido={refetch} />
-                )}
-                {aulas.length >= 3 && (
-                  <BotaoOrganizarAulas
-                    cursoId={curso.id}
-                    aulas={aulas}
-                    disabled={busy}
-                    onGravado={refetch}
-                  />
-                )}
+                <BotaoIACurso cursoId={curso.id} temAulas={aulas.length > 0} disabled={busy} />
                 <BotaoCorrigirPrivacidadeVimeo aulas={aulas} disabled={busy} />
                 <BotaoImportarVimeo onImportar={importarVimeo} disabled={busy} />
                 <BotaoImportarPasta onImportar={importarPastaDrive} disabled={busy} />

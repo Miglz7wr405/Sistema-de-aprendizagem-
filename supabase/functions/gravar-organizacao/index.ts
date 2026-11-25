@@ -1,7 +1,7 @@
 // Grava a organização de um curso em módulos. Admin-only.
 // Recebe { curso_id, modulos: [{titulo, descricao?, aulas:[{id}]}] }.
 // Apaga os módulos atuais do curso, insere os novos e atualiza modulo_id/ordem em cada aula.
-import { chamador, clienteAdmin, cors, json } from "../_shared/comum.ts";
+import { chamador, clienteAdmin, cors, eChamadaInterna, json } from "../_shared/comum.ts";
 
 type PropostaModulo = { titulo: string; descricao?: string | null; aulas: Array<{ id: string }> };
 
@@ -10,8 +10,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ erro: "Método não permitido" }, 405);
 
   const admin = clienteAdmin();
-  const quem = await chamador(req, admin);
-  if (!quem || quem.papel !== "admin" || quem.estado !== "aprovado") {
+  const quem = eChamadaInterna(req) ? null : await chamador(req, admin);
+  if (!eChamadaInterna(req) && (!quem || quem.papel !== "admin" || quem.estado !== "aprovado")) {
     return json({ erro: "Só administradores podem gravar a organização." }, 403);
   }
 

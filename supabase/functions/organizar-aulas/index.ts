@@ -1,7 +1,7 @@
 // Sugere módulos e uma ordem para as aulas de um curso, usando a IA do dono
 // (GEMINI_API_KEY ou GROQ_API_KEY, guardadas na tabela `segredos`).
 // Devolve uma proposta — não grava nada. O admin confirma com `gravar-organizacao`.
-import { chamador, clienteAdmin, cors, json, segredo } from "../_shared/comum.ts";
+import { chamador, clienteAdmin, cors, eChamadaInterna, json, segredo } from "../_shared/comum.ts";
 
 type Aula = { id: string; titulo: string; descricao: string | null };
 type PropostaModulo = { titulo: string; descricao?: string; aulas: Array<{ id: string }> };
@@ -135,8 +135,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ erro: "Método não permitido" }, 405);
 
   const admin = clienteAdmin();
-  const quem = await chamador(req, admin);
-  if (!quem || quem.papel !== "admin" || quem.estado !== "aprovado") {
+  const quem = eChamadaInterna(req) ? null : await chamador(req, admin);
+  if (!eChamadaInterna(req) && (!quem || quem.papel !== "admin" || quem.estado !== "aprovado")) {
     return json({ erro: "Só administradores podem organizar aulas." }, 403);
   }
 

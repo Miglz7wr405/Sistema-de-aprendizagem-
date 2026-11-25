@@ -95,3 +95,13 @@ export async function segredo(nome: string): Promise<string | null> {
     .maybeSingle();
   return (data?.valor as string | undefined) ?? null;
 }
+
+/**
+ * Chamada feita por outra função nossa (tarefas de IA em segundo plano), autenticada com a
+ * chave de serviço — que só existe no servidor. Conta como administrador.
+ */
+export function eChamadaInterna(req: Request): boolean {
+  const chave = req.headers.get("x-tarefa-chave");
+  const servico = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return Boolean(chave && servico && chave === servico);
+}
